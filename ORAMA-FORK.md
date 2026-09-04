@@ -75,3 +75,12 @@ runtime and the chunk store:
 
 See `docs/features/13-deployment-runtime.md` and `docs/features/22-change-capture.md` in
 the liquid repository.
+
+## Dependabot is off
+
+Upstream's `.github/dependabot.yml` is deleted on `liquid` (the default branch of this copy,
+so Dependabot reads nothing), its alerts and security updates are disabled in the repository
+settings, and its open PRs were closed (Steve, 2026-09-03). Dependency updates reach this copy only
+through the upstream sync. The five Dependabot PRs that were merged into `main` before this
+(#4–#9) are why `main` is not currently a fast-forward of upstream; resetting `main` to upstream is
+a separate, explicit step.
