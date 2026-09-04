@@ -27,21 +27,19 @@ deliberately set to an invalid value as a guard.
 Keeping `main` pristine means `git diff main..liquid` is always exactly our delta —
 which is what makes upstream syncs reviewable rather than archaeological.
 
+**Last synced upstream tag:** _not yet recorded_
+
 ## Syncing with upstream
 
 ```sh
-git fetch upstream --tags
-git checkout main
-git merge --ff-only upstream/main     # fails loudly if main was ever committed to
-git push origin main --tags
-
-git checkout liquid
-git rebase main                        # resolve conflicts in OUR commits only
-git push --force-with-lease origin liquid
+hack/sync-upstream.sh --dry-run
+hack/sync-upstream.sh --push
 ```
 
-Run this on a cadence. The longer the gap, the worse the rebase — k0s tracks Kubernetes
-releases and moves quickly.
+The script validates the guarded `upstream` remote, fast-forwards `main`, rebases
+`liquid`, checks the licence requirements, and updates the line above. Run it at
+every upstream release. See [the upstream-sync guide](docs/liquid/upstream-sync.md)
+for options, conflict recovery, and verification.
 
 ## Licence obligations
 
@@ -53,10 +51,13 @@ Apache 2.0 permits private modification with no obligation to publish. **If we d
 modified binaries**, three obligations attach:
 
 1. Include the `LICENSE`.
-2. Retain the `NOTICE` file and its attributions.
+2. Retain the `NOTICE` file and its attributions when the selected upstream ref includes one.
 3. **State that we changed the files** — §4(b) requires prominent notices of modification.
    Our changes must be identifiable, which the `main`/`liquid` branch split already makes
    true.
+
+The current upstream tree has no root `NOTICE`. The sync script reports whether the
+selected upstream ref includes one and checks it when present.
 
 The `docs/` directory is **share-alike**. If we modify and distribute k0s documentation,
 those modifications must be licensed CC-BY-SA-4.0. Prefer keeping liquid documentation in
