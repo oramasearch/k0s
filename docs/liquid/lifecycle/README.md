@@ -39,6 +39,8 @@ starts three controllers and three workers from that binary, and exercises the
 five procedures through the SSH inventory. It verifies that declared component
 versions survive the binary upgrade and that the HA etcd metrics job set is
 `kube-scheduler`, `kube-controller-manager`, and `etcd`.
+The recovery check uses a single-replica workload with a PersistentVolumeClaim
+to verify that the restored cluster can resume application data service.
 
 The test uses the same minimal shared HA configuration as `inttest/ap-ha3x3`,
 adds the branch's liquid component set without serializing defaulted per-node

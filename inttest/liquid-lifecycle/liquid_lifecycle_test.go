@@ -280,6 +280,7 @@ func (s *lifecycleSuite) waitForChartVersions(clients clientset.Interface, expec
 
 func (s *lifecycleSuite) createWorkload(client kubernetes.Interface) {
 	ctx := s.Context()
+	replicas := int32(1)
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "lifecycle-data",
@@ -301,7 +302,7 @@ func (s *lifecycleSuite) createWorkload(client kubernetes.Interface) {
 			Name: "lifecycle-workload",
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Pointer(1),
+			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "lifecycle-workload"},
 			},
@@ -403,10 +404,6 @@ func (s *lifecycleSuite) requireMetricsJobs(client kubernetes.Interface, expecte
 		return slices.Equal(jobs, expected), nil
 	})
 	s.Require().NoError(err)
-}
-
-func int32Pointer(value int32) *int32 {
-	return &value
 }
 
 func TestLifecycleSuite(t *testing.T) {
