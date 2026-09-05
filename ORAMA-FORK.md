@@ -76,7 +76,9 @@ runtime and the chunk store:
 - the node fetching image content as **chunks** it does not already have, across images
   rather than within one;
 - deploy-on-drip, driven by the drip fan-out rather than by a CI trigger;
-- attestation verification at admission, so what runs is what was attested.
+- attestation verification at admission, so what runs is what was attested;
+- microVM isolation for every customer workload on shared workers, with namespaces
+  reserved for environments belonging to one trusting customer;
 - declared Cilium, Gateway API, local-path, and Longhorn components whose versions and
   external replacement paths remain under cluster-configuration control.
 
