@@ -24,6 +24,7 @@ const bumpedLocalPathVersion = "0.0.37"
 
 const prepareCiliumFilesystemCommand = "mount -t bpf bpf /sys/fs/bpf 2>/dev/null || true; " +
 	"mount --make-shared /sys/fs/bpf; " +
+	"mount --make-shared /run; " +
 	"mkdir -p /run/cilium/cgroupv2; " +
 	"mount -t cgroup2 none /run/cilium/cgroupv2 2>/dev/null || true; " +
 	"mount --make-shared /run/cilium/cgroupv2"
