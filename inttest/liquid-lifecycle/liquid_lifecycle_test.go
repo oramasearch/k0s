@@ -48,6 +48,8 @@ spec:
     externalAddress: %s
   extensions:
     helm: {}
+  network:
+    provider: custom
 `
 
 type lifecycleSuite struct {
