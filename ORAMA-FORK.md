@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 k0s authors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Orama private copy of k0s
 
 This is a **private copy** of [`k0sproject/k0s`](https://github.com/k0sproject/k0s),

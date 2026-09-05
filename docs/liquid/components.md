@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 k0s authors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Liquid components
 
 New liquid clusters declare four replaceable components in `spec.liquid.components`. The declarations persist in the cluster configuration, so upgrading the k0s binary does not select new component versions.

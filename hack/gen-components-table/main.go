@@ -59,6 +59,10 @@ func main() {
 func renderComponentsPage() (string, error) {
 	components := v1beta1.DefaultLiquidSpec().Components
 	var page strings.Builder
+	page.WriteString("<!--\n")
+	page.WriteString("SPDX-FileCopyrightText: 2026 k0s authors\n")
+	page.WriteString("SPDX-License-Identifier: CC-BY-SA-4.0\n")
+	page.WriteString("-->\n\n")
 	page.WriteString("# Liquid components\n\n")
 	page.WriteString("New liquid clusters declare four replaceable components in `spec.liquid.components`. ")
 	page.WriteString("The declarations persist in the cluster configuration, so upgrading the k0s binary does not select new component versions.\n\n")

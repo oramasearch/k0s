@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 k0s authors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Liquid-specific k0s changes
 
 These pages document the private `liquid` branch additions. Upstream k0s documentation
