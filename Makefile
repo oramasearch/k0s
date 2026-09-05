@@ -235,6 +235,10 @@ codegen: $(codegen_targets)
 list-images:
 	@$(GO) run ./hack/list-images
 
+.PHONY: generate-liquid-components
+generate-liquid-components:
+	@$(GO) run ./hack/gen-components-table
+
 .PHONY: lint-copyright
 lint-copyright:
 	hack/copyright.sh

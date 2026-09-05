@@ -521,6 +521,140 @@ spec:
                       agent to connect to
                     type: string
                 type: object
+              liquid:
+                description: LiquidSpec contains the liquid-specific cluster configuration.
+                properties:
+                  components:
+                    description: LiquidComponents contains every component bundled
+                      by liquid.
+                    properties:
+                      cilium:
+                        description: LiquidComponent declares a replaceable, versioned
+                          component.
+                        properties:
+                          chart:
+                            description: LiquidComponentChart identifies a Helm chart
+                              and its repository.
+                            properties:
+                              name:
+                                type: string
+                              repository:
+                                type: string
+                            required:
+                            - name
+                            - repository
+                            type: object
+                          enabled:
+                            type: boolean
+                          replacement:
+                            type: string
+                          values:
+                            type: string
+                          version:
+                            type: string
+                        required:
+                        - chart
+                        - enabled
+                        - replacement
+                        - version
+                        type: object
+                      distributedStorage:
+                        description: LiquidComponent declares a replaceable, versioned
+                          component.
+                        properties:
+                          chart:
+                            description: LiquidComponentChart identifies a Helm chart
+                              and its repository.
+                            properties:
+                              name:
+                                type: string
+                              repository:
+                                type: string
+                            required:
+                            - name
+                            - repository
+                            type: object
+                          enabled:
+                            type: boolean
+                          replacement:
+                            type: string
+                          values:
+                            type: string
+                          version:
+                            type: string
+                        required:
+                        - chart
+                        - enabled
+                        - replacement
+                        - version
+                        type: object
+                      gatewayAPI:
+                        description: LiquidComponent declares a replaceable, versioned
+                          component.
+                        properties:
+                          chart:
+                            description: LiquidComponentChart identifies a Helm chart
+                              and its repository.
+                            properties:
+                              name:
+                                type: string
+                              repository:
+                                type: string
+                            required:
+                            - name
+                            - repository
+                            type: object
+                          enabled:
+                            type: boolean
+                          replacement:
+                            type: string
+                          values:
+                            type: string
+                          version:
+                            type: string
+                        required:
+                        - chart
+                        - enabled
+                        - replacement
+                        - version
+                        type: object
+                      localPath:
+                        description: LiquidComponent declares a replaceable, versioned
+                          component.
+                        properties:
+                          chart:
+                            description: LiquidComponentChart identifies a Helm chart
+                              and its repository.
+                            properties:
+                              name:
+                                type: string
+                              repository:
+                                type: string
+                            required:
+                            - name
+                            - repository
+                            type: object
+                          enabled:
+                            type: boolean
+                          replacement:
+                            type: string
+                          values:
+                            type: string
+                          version:
+                            type: string
+                        required:
+                        - chart
+                        - enabled
+                        - replacement
+                        - version
+                        type: object
+                    required:
+                    - cilium
+                    - distributedStorage
+                    - gatewayAPI
+                    - localPath
+                    type: object
+                type: object
               metricsServer:
                 description: |-
                   MetricsServer defines the configuration options for the metrics-server

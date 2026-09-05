@@ -43,6 +43,7 @@ type ClusterSpec struct {
 	Konnectivity      *KonnectivitySpec      `json:"konnectivity,omitempty"`
 	FeatureGates      FeatureGates           `json:"featureGates,omitempty"`
 	MetricsServer     *MetricsServer         `json:"metricsServer,omitempty"`
+	Liquid            *LiquidSpec            `json:"liquid,omitempty"`
 }
 
 // ClusterConfigStatus defines the observed state of ClusterConfig
@@ -84,7 +85,11 @@ func (c *ClusterConfig) StripDefaults() *ClusterConfig {
 	if reflect.DeepEqual(c.Spec.Storage, DefaultStorageSpec()) {
 		c.Spec.Storage = nil
 	}
-	if reflect.DeepEqual(c.Spec.Network, DefaultNetwork()) {
+	defaultNetwork := DefaultNetwork()
+	if c.Spec.Liquid != nil && c.Spec.Liquid.ciliumEnabled() {
+		defaultNetwork.Provider = "custom"
+	}
+	if reflect.DeepEqual(c.Spec.Network, defaultNetwork) {
 		c.Spec.Network = nil
 	} else if c.Spec.Network != nil && c.Spec.Network.NodeLocalLoadBalancing != nil {
 		nllb := c.Spec.Network.NodeLocalLoadBalancing
@@ -128,6 +133,9 @@ func (c *ClusterConfig) StripDefaults() *ClusterConfig {
 	}
 	if reflect.DeepEqual(c.Spec.Konnectivity, DefaultKonnectivitySpec()) {
 		c.Spec.Konnectivity = nil
+	}
+	if reflect.DeepEqual(c.Spec.Liquid, DefaultLiquidSpec()) {
+		c.Spec.Liquid = nil
 	}
 	return c
 }
@@ -347,7 +355,7 @@ func (c *ClusterConfig) UnmarshalJSON(data []byte) error {
 	if c.Spec != nil && c.Spec.Storage != nil {
 		storage = c.Spec.Storage
 	}
-	c.Spec = DefaultClusterSpec()
+	c.Spec = defaultClusterSpec(false)
 	if storage != nil {
 		c.Spec.Storage = storage
 	}
@@ -364,7 +372,7 @@ func (c *ClusterConfig) UnmarshalJSON(data []byte) error {
 	}
 
 	if jc.Spec == nil {
-		jc.Spec = DefaultClusterSpec()
+		jc.Spec = defaultClusterSpec(false)
 		if storage != nil {
 			jc.Spec.Storage = storage
 		}
@@ -400,6 +408,9 @@ func (c *ClusterConfig) UnmarshalJSON(data []byte) error {
 	if jc.Spec.Konnectivity == nil {
 		jc.Spec.Konnectivity = DefaultKonnectivitySpec()
 	}
+	if jc.Spec.Liquid != nil && jc.Spec.Liquid.ciliumEnabled() && !hasExplicitNetworkProvider(data) {
+		jc.Spec.Network.Provider = "custom"
+	}
 
 	jc.Spec.overrideImageRepositories()
 
@@ -408,6 +419,10 @@ func (c *ClusterConfig) UnmarshalJSON(data []byte) error {
 
 // DefaultClusterSpec default settings
 func DefaultClusterSpec() *ClusterSpec {
+	return defaultClusterSpec(true)
+}
+
+func defaultClusterSpec(includeLiquid bool) *ClusterSpec {
 	spec := &ClusterSpec{
 		Extensions:        DefaultExtensions(),
 		Storage:           DefaultStorageSpec(),
@@ -419,6 +434,10 @@ func DefaultClusterSpec() *ClusterSpec {
 		Images:            DefaultClusterImages(),
 		Telemetry:         DefaultClusterTelemetry(),
 		Konnectivity:      DefaultKonnectivitySpec(),
+	}
+	if includeLiquid {
+		spec.Liquid = DefaultLiquidSpec()
+		spec.Network.Provider = "custom"
 	}
 
 	spec.overrideImageRepositories()
@@ -447,6 +466,7 @@ func (s *ClusterSpec) Validate() (errs []error) {
 		"install":           s.Install,
 		"extensions":        s.Extensions,
 		"konnectivity":      s.Konnectivity,
+		"liquid":            s.Liquid,
 	} {
 		for _, err := range field.Validate() {
 			errs = append(errs, fmt.Errorf("%s: %w", name, err))
@@ -463,6 +483,12 @@ func (s *ClusterSpec) Validate() (errs []error) {
 		errs = append(errs, err)
 	}
 
+	if s.Liquid != nil && s.Liquid.ciliumEnabled() && s.Network != nil && s.Network.Provider != "custom" {
+		path := field.NewPath("liquid", "components", "cilium", "enabled")
+		detail := fmt.Sprintf("spec.liquid.components.cilium.enabled requires spec.network.provider to be custom, not %q", s.Network.Provider)
+		errs = append(errs, field.Invalid(path, true, detail))
+	}
+
 	if s.Network != nil && s.Network.ControlPlaneLoadBalancing != nil {
 		for _, err := range s.Network.ControlPlaneLoadBalancing.Validate() {
 			errs = append(errs, fmt.Errorf("controlPlaneLoadBalancing: %w", err))
@@ -472,6 +498,21 @@ func (s *ClusterSpec) Validate() (errs []error) {
 	errs = append(errs, s.MetricsServer.Validate(field.NewPath("metricsServer"))...)
 
 	return
+}
+
+func hasExplicitNetworkProvider(data []byte) bool {
+	var raw struct {
+		Spec *struct {
+			Network *struct {
+				Provider *json.RawMessage `json:"provider"`
+			} `json:"network"`
+		} `json:"spec"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return false
+	}
+
+	return raw.Spec != nil && raw.Spec.Network != nil && raw.Spec.Network.Provider != nil
 }
 
 func (s *ClusterSpec) ValidateNodeLocalLoadBalancing() (errs field.ErrorList) {
