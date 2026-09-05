@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 k0s authors
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: untrusted
+handler: kata
+scheduling:
+  nodeSelector:
+    liquid.oramasearch.com/runtime: kata

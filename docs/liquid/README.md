@@ -10,4 +10,6 @@ remains unchanged unless an upstream behavior itself changes.
 
 - [Declared components](components.md) covers pinned versions, upgrades, and external
   replacements for the opinionated runtime defaults.
+- [Multi-tenancy](multi-tenancy.md) records the customer isolation model and the
+  namespace and microVM runtime declarations.
 - [Upstream sync](upstream-sync.md) covers maintaining the private copy.

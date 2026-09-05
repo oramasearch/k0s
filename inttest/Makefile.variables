@@ -60,6 +60,7 @@ smoketests := \
 	check-kine \
 	check-kubectl \
 	check-liquid-components \
+	check-liquid-tenancy \
 	check-kubeletcertrotate \
 	check-kuberouter \
 	check-kuberouter-ipv6 \
