@@ -125,6 +125,8 @@ func (s *lifecycleSuite) initializeCluster() {
 	var controllerToken string
 	for index := range s.ControllerCount {
 		node := s.ControllerNode(index)
+		_, err := s.RunCommandController(index, "mkdir -p /etc/k0s")
+		s.Require().NoError(err)
 		s.PutFile(node, "/etc/k0s/k0s.yaml", string(marshaledConfig))
 		arguments := []string{
 			"--config=/etc/k0s/k0s.yaml",
