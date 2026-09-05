@@ -22,7 +22,7 @@ join_controller() {
   lifecycle_scp_to "$config" "$controller" /etc/k0s/k0s.yaml
   printf '%s' "$token" | lifecycle_ssh_pipe "$controller" install -m 0600 /dev/stdin /tmp/k0s-controller.token
   lifecycle_controller_args
-  lifecycle_k0s "$controller" install controller --force --config=/etc/k0s/k0s.yaml --token-file=/tmp/k0s-controller.token "${lifecycle_install_args[@]}"
+  lifecycle_install "$controller" controller --force --config=/etc/k0s/k0s.yaml --token-file=/tmp/k0s-controller.token
   lifecycle_k0s "$controller" start
   lifecycle_wait_for_api "$controller"
 }
@@ -45,7 +45,7 @@ main() {
   lifecycle_scp_to "$archive" "$primary" "$remote_archive"
   lifecycle_k0s "$primary" restore --config-out /etc/k0s/k0s.yaml "$remote_archive"
   lifecycle_controller_args
-  lifecycle_k0s "$primary" install controller --force --config=/etc/k0s/k0s.yaml "${lifecycle_install_args[@]}"
+  lifecycle_install "$primary" controller --force --config=/etc/k0s/k0s.yaml
   lifecycle_k0s "$primary" start
   lifecycle_wait_for_api "$primary"
   lifecycle_storage_hook K0S_LIFECYCLE_STORAGE_RESTORE_COMMAND "$primary"

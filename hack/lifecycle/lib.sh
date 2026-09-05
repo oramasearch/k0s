@@ -219,6 +219,17 @@ lifecycle_worker_args() {
   fi
 }
 
+lifecycle_install() {
+  local node="$1"
+  shift
+
+  if [ "${#lifecycle_install_args[@]}" -eq 0 ]; then
+    lifecycle_k0s "$node" install "$@"
+    return
+  fi
+  lifecycle_k0s "$node" install "$@" "${lifecycle_install_args[@]}"
+}
+
 lifecycle_storage_hook() {
   local variable="$1"
   local controller="$2"
