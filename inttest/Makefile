@@ -85,6 +85,8 @@ check-configchange: TIMEOUT=8m
 
 check-ctr: TIMEOUT=10m
 
+check-liquid-components: TIMEOUT=20m
+
 check-kubeletcertrotate: TIMEOUT=15m
 
 check-network-conformance-calico: TIMEOUT=15m

@@ -25,6 +25,8 @@ Cilium is the Gateway API controller; the `gatewayAPI` component supplies CRDs o
 
 Longhorn requires iSCSI initiator packages and services on every storage node. The local-path class is the default; Longhorn remains opt-in per claim unless the operator changes the chart values.
 
+The bootloose integration-test image enables `iscsid` so the default Longhorn release is exercised with the same host prerequisite.
+
 ## Inspect versions
 
 Run `k0s liquid components` on a controller to compare every declared version with the Helm release version recorded on its `Chart`. A managed row is complete when its status is `deployed` and both versions match. External rows report `external` because k0s does not inspect or control the provider's release.
