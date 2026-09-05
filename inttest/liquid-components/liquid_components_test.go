@@ -36,6 +36,9 @@ func (s *LiquidComponentsSuite) TestDeclaredVersionsSurviveBinaryUpgrade() {
 	_, err := s.RunCommandController(0, "/usr/local/bin/k0s config create > /tmp/k0s.yaml")
 	s.Require().NoError(err)
 	s.Require().NoError(s.InitController(0, "--single", "--enable-dynamic-config", "--config=/tmp/k0s.yaml"))
+	token, err := s.GetJoinToken("worker")
+	s.Require().NoError(err)
+	s.Require().NoError(s.RunWorkersWithToken(token))
 
 	restConfig, err := s.GetKubeConfig(controller)
 	s.Require().NoError(err)
@@ -126,6 +129,7 @@ func TestLiquidComponentsSuite(t *testing.T) {
 	s := LiquidComponentsSuite{
 		BootlooseSuite: common.BootlooseSuite{
 			ControllerCount: 1,
+			WorkerCount:     2,
 		},
 	}
 	suite.Run(t, &s)
