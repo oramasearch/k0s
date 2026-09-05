@@ -85,7 +85,8 @@ func renderComponentsPage() (string, error) {
 	page.WriteString("\n## Version changes\n\n")
 	page.WriteString("Edit the component's `version` in the `ClusterConfig` named `k0s` in `kube-system`. ")
 	page.WriteString("The extensions controller updates only that component's `Chart` resource. ")
-	page.WriteString("Wait for the `Chart` status to show the declared version before continuing. ")
+	page.WriteString("Managed objects are named `liquid-cilium`, `liquid-gateway-api`, `liquid-local-path`, and `liquid-distributed-storage` in `kube-system`. ")
+	page.WriteString("Wait for `k0s liquid components` to show the same declared and deployed versions before continuing. ")
 	page.WriteString("Keep the previous declaration available for rollback and follow the component's own version-skew and data-migration guidance.\n\n")
 	page.WriteString("Defaults are creation-time input. `k0s config create` emits all declarations, and the first controller persists them. ")
 	page.WriteString("Reading an older configuration that has no `spec.liquid` does not add components. ")
@@ -100,6 +101,9 @@ func renderComponentsPage() (string, error) {
 	page.WriteString("Both sources are explicit in the configuration and can be replaced.\n\n")
 	page.WriteString("Longhorn requires iSCSI initiator packages and services on every storage node. ")
 	page.WriteString("The local-path class is the default; Longhorn remains opt-in per claim unless the operator changes the chart values.\n")
+	page.WriteString("\n## Inspect versions\n\n")
+	page.WriteString("Run `k0s liquid components` on a controller to compare every declared version with the Helm release version recorded on its `Chart`. ")
+	page.WriteString("A managed row is complete when its status is `deployed` and both versions match. External rows report `external` because k0s does not inspect or control the provider's release.\n")
 
 	return page.String(), nil
 }

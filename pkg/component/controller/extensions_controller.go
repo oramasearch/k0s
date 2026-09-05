@@ -144,8 +144,51 @@ func (ec *ExtensionsController) Reconcile(ctx context.Context, clusterConfig *k0
 	if helmConfig == nil {
 		helmConfig = new(k0sv1beta1.HelmExtensions)
 	}
+	helmConfig.Charts = append(helmConfig.Charts, liquidComponentCharts(clusterConfig.Spec.Liquid)...)
 	ec.helmConfig.Set(helmConfig)
 	return nil
+}
+
+func liquidComponentCharts(liquid *k0sv1beta1.LiquidSpec) k0sv1beta1.ChartsSettings {
+	if liquid == nil || liquid.Components == nil {
+		return nil
+	}
+
+	var charts k0sv1beta1.ChartsSettings
+	for _, entry := range liquid.Components.Entries() {
+		component := entry.Component
+		if !component.Enabled {
+			continue
+		}
+
+		resourceName := k0sv1beta1.LiquidComponentChartResourceName(entry.Name)
+		chart := k0sv1beta1.Chart{
+			Name:           resourceName,
+			ResourceName:   resourceName,
+			LeaveInstalled: component.Replacement == k0sv1beta1.LiquidReplacementExternal,
+		}
+		if !chart.LeaveInstalled {
+			chart.ChartName = resourceName + "/" + component.Chart.Name
+			chart.Version = component.Version
+			chart.Values = component.Values
+			chart.TargetNS = liquidComponentTargetNamespace(entry.Name)
+			chart.Repository = &k0sv1beta1.Repository{
+				Name: resourceName,
+				URL:  component.Chart.Repository,
+			}
+		}
+		charts = append(charts, chart)
+	}
+
+	return charts
+}
+
+func liquidComponentTargetNamespace(componentName string) string {
+	if componentName == k0sv1beta1.LiquidComponentDistributedStorage {
+		return "longhorn-system"
+	}
+
+	return metav1.NamespaceSystem
 }
 
 func (ec *ExtensionsController) reconcileConfig(ctx context.Context, stackReconciledOnceCh chan<- struct{}) {
@@ -225,15 +268,30 @@ func (ec *ExtensionsController) reconcileStack(ctx context.Context, charts k0sv1
 
 	chartTemplate := template.Must(template.New("addon_crd_manifest").Funcs(sprig.TxtFuncMap()).Parse(chartCrdTemplate))
 	for _, chart := range charts {
+		if chart.LeaveInstalled {
+			if err := ec.leaveChartInstalled(ctx, chart.ResourceName); err != nil {
+				ec.L.WithError(err).Error("Failed to leave liquid component installed ", chart.Name)
+				return false
+			}
+			continue
+		}
+
 		data := struct {
 			*k0sv1beta1.Chart
-			Repository *k0sv1beta1.Repository
+			Repository   *k0sv1beta1.Repository
+			ResourceName string
 		}{
-			Chart: &chart,
+			Chart:        &chart,
+			Repository:   chart.Repository,
+			ResourceName: chart.ResourceName,
+		}
+		if data.ResourceName == "" {
+			data.ResourceName = "k0s-addon-chart-" + chart.Name
 		}
 
 		// Find matching repository for this chart
-		if repoID := extractRepositoryIdentifier(chart.ChartName); repoID != "" {
+		if data.Repository == nil {
+			repoID := extractRepositoryIdentifier(chart.ChartName)
 			data.Repository = ec.repositoryCache.get(repoID)
 		}
 
@@ -258,6 +316,36 @@ func (ec *ExtensionsController) reconcileStack(ctx context.Context, charts k0sv1
 	}
 
 	return !fail
+}
+
+func (ec *ExtensionsController) leaveChartInstalled(ctx context.Context, name string) error {
+	clientset, err := ec.clients.GetK0sClient()
+	if err != nil {
+		return err
+	}
+	charts := clientset.HelmV1beta1().Charts(metav1.NamespaceSystem)
+	chart, err := charts.Get(ctx, name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if chart.Labels[applier.NameLabel] != HelmExtensionStackName {
+		return nil
+	}
+
+	chart.Finalizers = slices.DeleteFunc(chart.Finalizers, func(finalizer string) bool {
+		return finalizer == finalizerName
+	})
+	if _, err := charts.Update(ctx, chart, metav1.UpdateOptions{}); err != nil {
+		return fmt.Errorf("can't release Chart %q ownership: %w", name, err)
+	}
+	if err := charts.Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("can't remove released Chart %q: %w", name, err)
+	}
+
+	return nil
 }
 
 type ChartReconciler struct {
@@ -715,7 +803,7 @@ const chartCrdTemplate = `
 apiVersion: helm.k0sproject.io/v1beta1
 kind: Chart
 metadata:
-  name: k0s-addon-chart-{{ .Name }}
+  name: {{ .ResourceName }}
   namespace: ` + metav1.NamespaceSystem + `
   finalizers:
     - ` + finalizerName + `

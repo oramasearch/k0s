@@ -12,6 +12,7 @@ import (
 
 	"github.com/k0sproject/k0s/pkg/apis/helm/v1beta1"
 	k0sv1beta1 "github.com/k0sproject/k0s/pkg/apis/k0s/v1beta1"
+	"github.com/k0sproject/k0s/pkg/applier"
 	"github.com/k0sproject/k0s/pkg/component/controller/leaderelector"
 	"sigs.k8s.io/yaml"
 
@@ -237,6 +238,39 @@ spec:
 status: {}
 `,
 		},
+		{
+			name: "liquid chart should use its stable resource name and repository",
+			chart: k0sv1beta1.Chart{
+				Name:         "liquid-cilium",
+				ChartName:    "liquid-cilium/cilium",
+				Version:      "1.20.1",
+				TargetNS:     metav1.NamespaceSystem,
+				ResourceName: "liquid-cilium",
+				Repository: &k0sv1beta1.Repository{
+					Name: "liquid-cilium",
+					URL:  "https://helm.cilium.io",
+				},
+			},
+			want: `apiVersion: helm.k0sproject.io/v1beta1
+kind: Chart
+metadata:
+  finalizers:
+  - helm.k0sproject.io/uninstall-helm-release
+  labels:
+    k0s.k0sproject.io/stack: helm
+  name: liquid-cilium
+  namespace: ` + metav1.NamespaceSystem + `
+spec:
+  chartName: liquid-cilium/cilium
+  namespace: kube-system
+  releaseName: liquid-cilium
+  repository:
+    url: https://helm.cilium.io
+  timeout: 0s
+  version: 1.20.1
+status: {}
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -302,6 +336,84 @@ status: {}
 			})
 		})
 	}
+}
+
+func TestLiquidComponentCharts(t *testing.T) {
+	liquid := k0sv1beta1.DefaultLiquidSpec()
+	charts := liquidComponentCharts(liquid)
+	require.Len(t, charts, 4)
+
+	wantNames := []string{
+		"liquid-cilium",
+		"liquid-gateway-api",
+		"liquid-local-path",
+		"liquid-distributed-storage",
+	}
+	for idx, chart := range charts {
+		assert.Equal(t, wantNames[idx], chart.Name)
+		assert.Equal(t, wantNames[idx], chart.ResourceName)
+		assert.NotEmpty(t, chart.Version)
+		require.NotNil(t, chart.Repository)
+		assert.NotEmpty(t, chart.Repository.URL)
+		assert.False(t, chart.LeaveInstalled)
+	}
+	assert.Equal(t, "longhorn-system", charts[3].TargetNS)
+
+	liquid.Components.GatewayAPI.Replacement = k0sv1beta1.LiquidReplacementExternal
+	charts = liquidComponentCharts(liquid)
+	assert.True(t, charts[1].LeaveInstalled)
+	assert.Empty(t, charts[1].ChartName)
+}
+
+func TestLeaveChartInstalled(t *testing.T) {
+	chartName := k0sv1beta1.LiquidComponentChartResourceName(k0sv1beta1.LiquidComponentCilium)
+	managed := &v1beta1.Chart{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1beta1.SchemeGroupVersion.String(),
+			Kind:       "Chart",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       chartName,
+			Namespace:  metav1.NamespaceSystem,
+			Labels:     map[string]string{applier.NameLabel: HelmExtensionStackName},
+			Finalizers: []string{finalizerName},
+		},
+	}
+	cf := testutil.NewFakeClientFactory(managed)
+	underTest := NewExtensionsController(cf, leaderelector.Off())
+
+	require.NoError(t, underTest.leaveChartInstalled(t.Context(), chartName))
+	remaining, err := cf.K0sClient.HelmV1beta1().Charts(metav1.NamespaceSystem).Get(t.Context(), chartName, metav1.GetOptions{})
+	if err == nil {
+		assert.NotContains(t, remaining.Finalizers, finalizerName)
+	}
+	var deleted bool
+	for _, action := range cf.K0sClient.Actions() {
+		if action.GetVerb() == "delete" && action.GetResource().Resource == "charts" {
+			deleted = true
+		}
+	}
+	assert.True(t, deleted)
+}
+
+func TestLeaveChartInstalledPreservesForeignChart(t *testing.T) {
+	chartName := k0sv1beta1.LiquidComponentChartResourceName(k0sv1beta1.LiquidComponentCilium)
+	foreign := &v1beta1.Chart{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1beta1.SchemeGroupVersion.String(),
+			Kind:       "Chart",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      chartName,
+			Namespace: metav1.NamespaceSystem,
+		},
+	}
+	cf := testutil.NewFakeClientFactory(foreign)
+	underTest := NewExtensionsController(cf, leaderelector.Off())
+
+	require.NoError(t, underTest.leaveChartInstalled(t.Context(), chartName))
+	_, err := cf.K0sClient.HelmV1beta1().Charts(metav1.NamespaceSystem).Get(t.Context(), chartName, metav1.GetOptions{})
+	assert.NoError(t, err)
 }
 
 func TestExtractRepositoryIdentifier(t *testing.T) {
