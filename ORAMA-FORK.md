@@ -81,6 +81,8 @@ runtime and the chunk store:
   reserved for environments belonging to one trusting customer;
 - declared Cilium, Gateway API, local-path, and Longhorn components whose versions and
   external replacement paths remain under cluster-configuration control.
+- lifecycle runbooks and SSH automation for upgrades, recovery, node replacement,
+  certificate rotation, and metrics for those declared components.
 
 See `docs/features/13-deployment-runtime.md` and `docs/features/22-change-capture.md` in
 the liquid repository.

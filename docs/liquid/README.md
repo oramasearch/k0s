@@ -12,4 +12,6 @@ remains unchanged unless an upstream behavior itself changes.
   replacements for the opinionated runtime defaults.
 - [Multi-tenancy](multi-tenancy.md) records the customer isolation model and the
   namespace and microVM runtime declarations.
+- [Lifecycle runbooks](lifecycle/README.md) cover upgrades, backup and restore, node
+  replacement, certificate rotation, and observability for those defaults.
 - [Upstream sync](upstream-sync.md) covers maintaining the private copy.
