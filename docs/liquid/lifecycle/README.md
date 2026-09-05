@@ -36,9 +36,9 @@ five procedures through the SSH inventory. It verifies that declared component
 versions survive the binary upgrade and that the HA etcd metrics job set is
 `kube-scheduler`, `kube-controller-manager`, and `etcd`.
 
-The test bootstrap creates `/etc/k0s` on every controller before placing the
-shared dynamic configuration, matching the directory prepared by a k0s
-installation on an operator-managed node.
+The test uses the same minimal shared HA configuration as `inttest/ap-ha3x3`,
+then enables dynamic configuration and the metrics scraper on every
+controller.
 
 - [Upgrade](upgrade.md)
 - [Backup and restore](backup-restore.md)
