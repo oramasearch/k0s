@@ -105,7 +105,7 @@ func renderComponentsPage() (string, error) {
 	page.WriteString("Both sources are explicit in the configuration and can be replaced.\n\n")
 	page.WriteString("Longhorn requires iSCSI initiator packages and services on every storage node. ")
 	page.WriteString("The local-path class is the default; Longhorn remains opt-in per claim unless the operator changes the chart values.\n\n")
-	page.WriteString("The bootloose integration test uses one controller and two workers, and its image enables `iscsid` so the default Longhorn release is exercised with the same host prerequisite.\n")
+	page.WriteString("The bootloose integration test starts a dynamically configured controller and joins two workers; its image enables `iscsid` so the default Longhorn release is exercised with the same host prerequisite.\n")
 	page.WriteString("\n## Inspect versions\n\n")
 	page.WriteString("Run `k0s liquid components` on a controller to compare every declared version with the Helm release version recorded on its `Chart`. ")
 	page.WriteString("A managed row is complete when its status is `deployed` and both versions match. External rows report `external` because k0s does not inspect or control the provider's release.\n")

@@ -35,7 +35,7 @@ func (s *LiquidComponentsSuite) TestDeclaredVersionsSurviveBinaryUpgrade() {
 	controller := s.ControllerNode(0)
 	_, err := s.RunCommandController(0, "/usr/local/bin/k0s config create > /tmp/k0s.yaml")
 	s.Require().NoError(err)
-	s.Require().NoError(s.InitController(0, "--single", "--enable-dynamic-config", "--config=/tmp/k0s.yaml"))
+	s.Require().NoError(s.InitController(0, "--enable-dynamic-config", "--config=/tmp/k0s.yaml"))
 	token, err := s.GetJoinToken("worker")
 	s.Require().NoError(err)
 	s.Require().NoError(s.RunWorkersWithToken(token))
