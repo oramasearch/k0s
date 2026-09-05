@@ -40,6 +40,8 @@ The test uses the same minimal shared HA configuration as `inttest/ap-ha3x3`,
 adds the branch's liquid component set without serializing defaulted per-node
 addresses, sets Cilium's required `network.provider: custom`, then enables
 dynamic configuration and the metrics scraper on every controller.
+It waits for each controller's SSH service before transferring that shared
+configuration.
 
 - [Upgrade](upgrade.md)
 - [Backup and restore](backup-restore.md)

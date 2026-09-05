@@ -135,6 +135,7 @@ func (s *lifecycleSuite) initializeCluster() {
 	var controllerToken string
 	for index := range s.ControllerCount {
 		node := s.ControllerNode(index)
+		s.Require().NoError(s.WaitForSSH(node, 2*time.Minute, time.Second))
 		s.PutFile(node, "/tmp/k0s.yaml", configData)
 		arguments := []string{
 			"--config=/tmp/k0s.yaml",
