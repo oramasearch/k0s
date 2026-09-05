@@ -22,7 +22,11 @@ import (
 
 const bumpedLocalPathVersion = "0.0.37"
 
-const prepareBPFFilesystemCommand = "mount -t bpf bpf /sys/fs/bpf 2>/dev/null || true; mount --make-shared /sys/fs/bpf"
+const prepareCiliumFilesystemCommand = "mount -t bpf bpf /sys/fs/bpf 2>/dev/null || true; " +
+	"mount --make-shared /sys/fs/bpf; " +
+	"mkdir -p /run/cilium/cgroupv2; " +
+	"mount -t cgroup2 none /run/cilium/cgroupv2 2>/dev/null || true; " +
+	"mount --make-shared /run/cilium/cgroupv2"
 
 type LiquidComponentsSuite struct {
 	common.BootlooseSuite
@@ -35,7 +39,7 @@ type chartSnapshot struct {
 
 func (s *LiquidComponentsSuite) TestDeclaredVersionsSurviveBinaryUpgrade() {
 	controller := s.ControllerNode(0)
-	s.prepareBPFFilesystems()
+	s.prepareCiliumFilesystems()
 	_, err := s.RunCommandController(0, "/usr/local/bin/k0s config create > /tmp/k0s.yaml")
 	s.Require().NoError(err)
 	s.Require().NoError(s.InitController(0, "--enable-dynamic-config", "--config=/tmp/k0s.yaml"))
@@ -83,11 +87,11 @@ func (s *LiquidComponentsSuite) TestDeclaredVersionsSurviveBinaryUpgrade() {
 	s.logComponents()
 }
 
-func (s *LiquidComponentsSuite) prepareBPFFilesystems() {
-	_, err := s.RunCommandController(0, prepareBPFFilesystemCommand)
+func (s *LiquidComponentsSuite) prepareCiliumFilesystems() {
+	_, err := s.RunCommandController(0, prepareCiliumFilesystemCommand)
 	s.Require().NoError(err)
 	for worker := range s.WorkerCount {
-		_, err = s.RunCommandWorker(worker, prepareBPFFilesystemCommand)
+		_, err = s.RunCommandWorker(worker, prepareCiliumFilesystemCommand)
 		s.Require().NoError(err)
 	}
 }
