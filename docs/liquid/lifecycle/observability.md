@@ -20,7 +20,9 @@ An HA cluster using managed etcd reports these active jobs:
 - `etcd`
 
 A single-controller configuration using Kine reports `kine` instead of `etcd`.
-That single-node mode is not exercised by this lifecycle scenario.
+That single-node mode is not exercised by this lifecycle scenario; its
+automation belongs to the later lifecycle leaf that introduces that runtime
+mode.
 
 ## Why
 
