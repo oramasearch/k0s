@@ -29,10 +29,8 @@ operator_controller_for() {
 prepare_replacement_host() {
   local node="$1"
 
-  lifecycle_ssh_run "$node" bash -ceu '
-    /usr/local/bin/k0s stop || true
-    /usr/local/bin/k0s reset || true
-  '
+  lifecycle_ssh_run "$node" "$lifecycle_k0s" stop || true
+  lifecycle_ssh_run "$node" "$lifecycle_k0s" reset || true
 }
 
 wait_for_worker() {

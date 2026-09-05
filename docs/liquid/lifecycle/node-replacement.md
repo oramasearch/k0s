@@ -51,4 +51,5 @@ Use a new SSH target for a newly provisioned machine by changing only that
 node's third inventory column. The replacement node needs k0s installed at
 `K0S_LIFECYCLE_K0S` and the storage-node prerequisites already present. Set
 `K0S_LIFECYCLE_STORAGE_RESCHEDULE_COMMAND` when an external storage provider
-needs an additional replica-rebuild action after a node replacement.
+needs an additional replica-rebuild action after a node replacement. The
+script uses that configured k0s path for the stop and reset operations too.
