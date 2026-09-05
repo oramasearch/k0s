@@ -42,6 +42,14 @@ const lifecyclePrepareFilesystems = "mount -t bpf bpffs /sys/fs/bpf 2>/dev/null 
 	"mount --bind /var/lib/longhorn /var/lib/longhorn; " +
 	"mount --make-shared /var/lib/longhorn"
 
+const lifecycleControllerConfig = `
+spec:
+  api:
+    externalAddress: %s
+  extensions:
+    helm: {}
+`
+
 type lifecycleSuite struct {
 	common.BootlooseSuite
 	lifecycleEnvironment []string
@@ -113,7 +121,8 @@ func (s *lifecycleSuite) prepareComponentFilesystems() {
 
 func (s *lifecycleSuite) initializeCluster() {
 	config := k0sv1beta1.ClusterConfig{}
-	config.Spec.API.ExternalAddress = s.GetLBAddress()
+	configData := fmt.Sprintf(lifecycleControllerConfig, s.GetLBAddress())
+	s.Require().NoError(yaml.Unmarshal([]byte(configData), &config))
 	config.Spec.Liquid = k0sv1beta1.DefaultLiquidSpec()
 	marshaledConfig, err := yaml.Marshal(&config)
 	s.Require().NoError(err)
