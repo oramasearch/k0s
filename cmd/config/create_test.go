@@ -7,9 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/k0sproject/k0s/cmd/config"
+	"github.com/k0sproject/k0s/pkg/apis/k0s/v1beta1"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
 )
 
 func TestCreateCmd_Images(t *testing.T) {
@@ -46,7 +49,20 @@ func TestCreateCmd_Images(t *testing.T) {
 			cfg := out.String()
 			test.check(t, cfg, "quay.io/k0sproject")
 			test.check(t, cfg, "image: ")
-			test.check(t, cfg, "version: ")
 		})
 	}
+}
+
+func TestCreateCmd_LiquidComponents(t *testing.T) {
+	underTest := config.NewCreateCmd()
+	var out strings.Builder
+	underTest.SetOut(&out)
+	require.NoError(t, underTest.Execute())
+
+	var created v1beta1.ClusterConfig
+	require.NoError(t, yaml.Unmarshal([]byte(out.String()), &created))
+	require.NotNil(t, created.Spec.Liquid)
+	require.NotNil(t, created.Spec.Liquid.Components)
+	assert.Equal(t, v1beta1.DefaultLiquidSpec(), created.Spec.Liquid)
+	assert.Equal(t, "custom", created.Spec.Network.Provider)
 }

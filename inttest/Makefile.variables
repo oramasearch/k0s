@@ -59,6 +59,7 @@ smoketests := \
 	check-k0scloudprovider \
 	check-kine \
 	check-kubectl \
+	check-liquid-components \
 	check-kubeletcertrotate \
 	check-kuberouter \
 	check-kuberouter-ipv6 \

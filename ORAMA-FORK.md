@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 k0s authors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Orama private copy of k0s
 
 This is a **private copy** of [`k0sproject/k0s`](https://github.com/k0sproject/k0s),
@@ -72,6 +77,8 @@ runtime and the chunk store:
   rather than within one;
 - deploy-on-drip, driven by the drip fan-out rather than by a CI trigger;
 - attestation verification at admission, so what runs is what was attested.
+- declared Cilium, Gateway API, local-path, and Longhorn components whose versions and
+  external replacement paths remain under cluster-configuration control.
 
 See `docs/features/13-deployment-runtime.md` and `docs/features/22-change-capture.md` in
 the liquid repository.

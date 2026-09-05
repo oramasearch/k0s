@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 k0s authors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Upstream sync
 
 `oramasearch/k0s` is a private copy of `k0sproject/k0s`. Its `main` branch is a

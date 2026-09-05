@@ -21,6 +21,7 @@ RUN apk add --no-cache \
   haproxy \
   nginx \
   inotify-tools \
+  open-iscsi \
   ipvsadm
 
 # enable syslog and sshd
@@ -28,6 +29,7 @@ RUN rc-update add syslog boot
 RUN rc-update add sshd default
 RUN rc-update add local default
 RUN rc-update add nginx default
+RUN rc-update add iscsid default
 # Ensures that /usr/local/bin/k0s is seeded from /dist at startup
 RUN rc-update add k0s-seed default
 # Prevent start-stop-daemon from hanging when max_fds is huge

@@ -108,6 +108,11 @@ type Chart struct {
 	// ForceUpgrade when set to false, disables the use of the "--force" flag when upgrading the chart (default: true).
 	ForceUpgrade *bool `json:"forceUpgrade,omitempty"`
 	Order        int   `json:"order,omitempty"`
+
+	// The fields below are controller-only settings for generated liquid charts.
+	ResourceName   string      `json:"-"`
+	Repository     *Repository `json:"-"`
+	LeaveInstalled bool        `json:"-"`
 }
 
 // BackwardCompatibleDuration is a metav1.Duration with a different JSON

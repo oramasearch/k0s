@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 k0s authors
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # k0s repository instructions
 
 Read [ORAMA-FORK.md](ORAMA-FORK.md) before changing this private copy. It defines
