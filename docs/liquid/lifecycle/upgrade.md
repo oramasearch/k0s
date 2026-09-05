@@ -58,3 +58,5 @@ Autopilot plans are immutable. The script removes only a completed `autopilot`
 plan and refuses to replace an active plan. Change a liquid component in a
 separate operation as described in [Declared components](../components.md),
 after checking that its own compatibility policy permits the change.
+The generated plan is a temporary local file and is removed on exit, including
+when the shell runs with `set -u`.

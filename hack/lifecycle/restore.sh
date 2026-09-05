@@ -56,7 +56,7 @@ main() {
   fi
 
   config="$(mktemp)"
-  trap 'rm -f -- "$config"' EXIT
+  trap 'rm -f -- "${config:-}"' EXIT
   lifecycle_ssh_run "$primary" cat /etc/k0s/k0s.yaml >"$config"
   token="$(lifecycle_k0s "$primary" token create --role controller --expiry="${K0S_LIFECYCLE_TOKEN_EXPIRY:-1h}")"
   for controller in "${lifecycle_controllers[@]}"; do

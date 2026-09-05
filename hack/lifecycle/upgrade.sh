@@ -90,7 +90,7 @@ main() {
   esac
 
   plan="$(mktemp)"
-  trap 'rm -f -- "$plan"' EXIT
+  trap 'rm -f -- "${plan:-}"' EXIT
   {
     printf '%s\n' "apiVersion: autopilot.k0sproject.io/v1beta2"
     printf '%s\n' "kind: Plan"

@@ -64,4 +64,5 @@ Keep archives encrypted and off-cluster, test a restore on fresh controllers,
 and retain storage-provider backups on an independently protected target. To
 change storage provider, migrate claims and their data before setting the
 replaced liquid component to `external`; the k0s archive is not a volume
-migration tool.
+migration tool. The restore script removes its temporary local configuration
+copy on exit, including when the shell runs with `set -u`.
