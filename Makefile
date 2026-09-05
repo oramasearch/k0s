@@ -246,7 +246,7 @@ liquid_lifecycle_previous_k0s := $(liquid_lifecycle_previous_dir)/k0s
 $(liquid_lifecycle_previous_k0s):
 	mkdir -p '$(@D)'
 	git archive '$(liquid_lifecycle_previous_ref)' | tar -x -C '$(@D)'
-	$(MAKE) -C '$(@D)' k0s
+	$(MAKE) -C '$(@D)' K0S_GO_BUILD_CACHE='$(@D)/build/cache' k0s
 
 .PHONY: check-liquid-lifecycle
 check-liquid-lifecycle: export K0S_UPDATE_FROM_PATH := $(liquid_lifecycle_previous_k0s)
