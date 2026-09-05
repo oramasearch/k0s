@@ -112,12 +112,7 @@ func (s *lifecycleSuite) prepareComponentFilesystems() {
 }
 
 func (s *lifecycleSuite) initializeCluster() {
-	_, err := s.RunCommandController(0, "/usr/local/bin/k0s config create > /tmp/k0s.yaml")
-	s.Require().NoError(err)
-	configData := s.GetFileFromController(0, "/tmp/k0s.yaml")
-
 	config := k0sv1beta1.ClusterConfig{}
-	s.Require().NoError(yaml.Unmarshal([]byte(configData), &config))
 	config.Spec.API.ExternalAddress = s.GetLBAddress()
 	config.Spec.Liquid = k0sv1beta1.DefaultLiquidSpec()
 	marshaledConfig, err := yaml.Marshal(&config)
