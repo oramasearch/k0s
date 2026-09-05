@@ -30,7 +30,7 @@ least 30 days remaining, declared components to be deployed, and no pending
 Autopilot plan.
 
 `make check-liquid-lifecycle` builds the preceding `origin/liquid` revision in
-an isolated cache,
+an isolated cache with that revision's version and source date,
 starts three controllers and three workers from that binary, and exercises the
 five procedures through the SSH inventory. It verifies that declared component
 versions survive the binary upgrade and that the HA etcd metrics job set is
