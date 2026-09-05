@@ -30,7 +30,7 @@ Cilium is the Gateway API controller; the `gatewayAPI` component supplies CRDs o
 
 Longhorn requires iSCSI initiator packages and services on every storage node. The local-path class is the default; Longhorn remains opt-in per claim unless the operator changes the chart values.
 
-The bootloose integration test starts a dynamically configured controller and joins two workers. It prepares Cilium's bpffs, cgroup v2, and network-namespace mounts, and its image enables `iscsid` so the default Longhorn release is exercised with the same host prerequisite.
+The bootloose integration test starts a dynamically configured controller and joins two workers. It prepares Cilium's bpffs, cgroup v2, and network-namespace mounts and Longhorn's shared data path; its image enables `iscsid` so the default Longhorn release is exercised with the same host prerequisite.
 
 ## Inspect versions
 
