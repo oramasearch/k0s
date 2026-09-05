@@ -239,6 +239,19 @@ list-images:
 generate-liquid-components:
 	@$(GO) run ./hack/gen-components-table
 
+liquid_lifecycle_previous_ref := $(shell git rev-parse origin/liquid)
+liquid_lifecycle_previous_dir := $(CURDIR)/build/cache/liquid-lifecycle-$(liquid_lifecycle_previous_ref)
+liquid_lifecycle_previous_k0s := $(liquid_lifecycle_previous_dir)/k0s
+
+$(liquid_lifecycle_previous_k0s):
+	mkdir -p '$(@D)'
+	git archive '$(liquid_lifecycle_previous_ref)' | tar -x -C '$(@D)'
+	$(MAKE) -C '$(@D)' k0s
+
+.PHONY: check-liquid-lifecycle
+check-liquid-lifecycle: export K0S_UPDATE_FROM_PATH := $(liquid_lifecycle_previous_k0s)
+check-liquid-lifecycle: $(liquid_lifecycle_previous_k0s)
+
 .PHONY: lint-copyright
 lint-copyright:
 	hack/copyright.sh
