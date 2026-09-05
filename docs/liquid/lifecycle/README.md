@@ -37,10 +37,9 @@ versions survive the binary upgrade and that the HA etcd metrics job set is
 `kube-scheduler`, `kube-controller-manager`, and `etcd`.
 
 The test uses the same minimal shared HA configuration as `inttest/ap-ha3x3`,
-initializes the optional API and Helm sections from that configuration, adds
-the branch's liquid component set with Cilium's required
-`network.provider: custom`, then enables dynamic configuration and the metrics
-scraper on every controller.
+adds the branch's liquid component set without serializing defaulted per-node
+addresses, sets Cilium's required `network.provider: custom`, then enables
+dynamic configuration and the metrics scraper on every controller.
 
 - [Upgrade](upgrade.md)
 - [Backup and restore](backup-restore.md)

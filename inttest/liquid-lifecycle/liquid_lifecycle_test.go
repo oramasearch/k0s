@@ -50,6 +50,8 @@ spec:
     helm: {}
   network:
     provider: custom
+  liquid:
+%s
 `
 
 type lifecycleSuite struct {
@@ -122,17 +124,18 @@ func (s *lifecycleSuite) prepareComponentFilesystems() {
 }
 
 func (s *lifecycleSuite) initializeCluster() {
-	config := k0sv1beta1.ClusterConfig{}
-	configData := fmt.Sprintf(lifecycleControllerConfig, s.GetLBAddress())
-	s.Require().NoError(yaml.Unmarshal([]byte(configData), &config))
-	config.Spec.Liquid = k0sv1beta1.DefaultLiquidSpec()
-	marshaledConfig, err := yaml.Marshal(&config)
+	liquidConfig, err := yaml.Marshal(k0sv1beta1.DefaultLiquidSpec())
 	s.Require().NoError(err)
+	configData := fmt.Sprintf(
+		lifecycleControllerConfig,
+		s.GetLBAddress(),
+		indentYAML(string(liquidConfig), 4),
+	)
 
 	var controllerToken string
 	for index := range s.ControllerCount {
 		node := s.ControllerNode(index)
-		s.PutFile(node, "/tmp/k0s.yaml", string(marshaledConfig))
+		s.PutFile(node, "/tmp/k0s.yaml", configData)
 		arguments := []string{
 			"--config=/tmp/k0s.yaml",
 			"--enable-dynamic-config",
@@ -154,6 +157,12 @@ func (s *lifecycleSuite) initializeCluster() {
 	s.Require().NoError(err)
 	s.Require().NoError(s.RunWorkersWithToken(workerToken))
 	s.waitForWorkers(s.kubeClient())
+}
+
+func indentYAML(content string, spaces int) string {
+	prefix := strings.Repeat(" ", spaces)
+	trimmedContent := strings.TrimSuffix(content, "\n")
+	return prefix + strings.ReplaceAll(trimmedContent, "\n", "\n"+prefix)
 }
 
 func (s *lifecycleSuite) configureLifecycleAutomation() {
