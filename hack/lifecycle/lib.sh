@@ -45,7 +45,7 @@ lifecycle_load_inventory() {
     esac
     [[ "$node" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || lifecycle_die "invalid node name: $node"
     [ -n "${target:-}" ] || lifecycle_die "missing SSH target for $node"
-    for record in "${lifecycle_records[@]}"; do
+    for record in "${lifecycle_records[@]:-}"; do
       IFS='|' read -r _ node_in_record _ <<<"$record"
       if [ "$node_in_record" = "$node" ]; then
         lifecycle_die "duplicate inventory node: $node"

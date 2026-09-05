@@ -22,6 +22,8 @@ Set `K0S_LIFECYCLE_INVENTORY` to that file. SSH targets can be host aliases in
 `K0S_LIFECYCLE_SSH_CONFIG`, which is how the scripts run against bootloose and
 how operators can select identities, ports, and bastions. `K0S_LIFECYCLE_K0S`
 defaults to `/usr/local/bin/k0s`; set it when k0s is installed elsewhere.
+The inventory parser accepts the first row without requiring a placeholder
+record, including when scripts run with `set -u`.
 
 Run [health checks](../../../hack/lifecycle/check-health.sh) before and after
 any disruptive operation. The checks require all worker nodes to be Ready,
