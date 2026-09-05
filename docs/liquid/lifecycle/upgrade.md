@@ -18,6 +18,8 @@ Set `K0S_LIFECYCLE_BINARY_URL` for a private build, or set
 `K0S_LIFECYCLE_BINARY_URL_TEMPLATE` with `{version}` and `{arch}` placeholders.
 Set `K0S_LIFECYCLE_FORCE_UPDATE=true` only when a rebuilt binary deliberately
 retains the installed version string.
+The platform list starts empty and accepts the first controller or worker
+architecture when the script runs with `set -u`.
 
 ## Why
 

@@ -108,7 +108,7 @@ main() {
     printf '%s\n' "        platforms:"
     for node in "${lifecycle_controllers[@]}" "${lifecycle_workers[@]}"; do
       platform="$(platform_for_node "$node")"
-      if [[ " ${platforms[*]} " == *" $platform "* ]]; then
+      if [[ " ${platforms[*]:-} " == *" $platform "* ]]; then
         continue
       fi
       platforms+=("$platform")
