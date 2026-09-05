@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -40,12 +41,6 @@ const lifecyclePrepareFilesystems = "mount -t bpf bpffs /sys/fs/bpf 2>/dev/null 
 	"mkdir -p /var/lib/longhorn; " +
 	"mount --bind /var/lib/longhorn /var/lib/longhorn; " +
 	"mount --make-shared /var/lib/longhorn"
-
-const lifecycleControllerConfig = `
-spec:
-  api:
-    externalAddress: %s
-`
 
 type lifecycleSuite struct {
 	common.BootlooseSuite
@@ -117,10 +112,21 @@ func (s *lifecycleSuite) prepareComponentFilesystems() {
 }
 
 func (s *lifecycleSuite) initializeCluster() {
+	_, err := s.RunCommandController(0, "/usr/local/bin/k0s config create > /tmp/k0s.yaml")
+	s.Require().NoError(err)
+	configData := s.GetFileFromController(0, "/tmp/k0s.yaml")
+
+	config := k0sv1beta1.ClusterConfig{}
+	s.Require().NoError(yaml.Unmarshal([]byte(configData), &config))
+	config.Spec.API.ExternalAddress = s.GetLBAddress()
+	config.Spec.Liquid = k0sv1beta1.DefaultLiquidSpec()
+	marshaledConfig, err := yaml.Marshal(&config)
+	s.Require().NoError(err)
+
 	var controllerToken string
 	for index := range s.ControllerCount {
 		node := s.ControllerNode(index)
-		s.PutFile(node, "/tmp/k0s.yaml", fmt.Sprintf(lifecycleControllerConfig, s.GetLBAddress()))
+		s.PutFile(node, "/tmp/k0s.yaml", string(marshaledConfig))
 		arguments := []string{
 			"--config=/tmp/k0s.yaml",
 			"--enable-dynamic-config",
