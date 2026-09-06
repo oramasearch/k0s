@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 k0s authors
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: orama.cloud/v1alpha1
+kind: Lake
+metadata:
+  name: hello
+spec:
+  namespace: lake-dev
+  image: oramasearch/lake:v1-sandbox
+  pullSecretName: oramasearch-dockerhub
+  replicas: 1
+  store:
+    size: 100Gi
+    storageClassName: local-path
+    accessModes:
+      - ReadWriteOnce
+  env:
+    - name: LAKE_LOG_MODE
+      value: air-gapped
+  postgres:
+    instances: 1
+    storageSize: 50Gi
+    storageClassName: local-path
