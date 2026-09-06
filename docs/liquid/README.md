@@ -10,6 +10,8 @@ remains unchanged unless an upstream behavior itself changes.
 
 - [Chunk-aware node images](chunk-aware-node.md) describes the embedded node store, OCI
   annotation contract, containerd proxy snapshotter, cross-image chunk reuse, and fallback path.
+- [Image admission](admission.md) describes the liquid verifier, namespaced policy routing,
+  static Pod deployment, certificate handling, and fail-closed behavior.
 - [Declared components](components.md) covers pinned versions, upgrades, and external
   replacements for the opinionated runtime defaults.
 - [Multi-tenancy](multi-tenancy.md) records the customer isolation model and the

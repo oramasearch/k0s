@@ -30,6 +30,7 @@ type Profile struct {
 	AutopilotDisabled      bool
 	PrimaryAddressFamily   v1beta1.PrimaryAddressFamilyType
 	LiquidNodeStore        *v1beta1.LiquidNodeStore
+	LiquidAdmission        *v1beta1.LiquidAdmission
 }
 
 func (p *Profile) DeepCopy() *Profile {
@@ -57,6 +58,11 @@ func (p *Profile) DeepCopyInto(out *Profile) {
 		in, out := &p.LiquidNodeStore, &out.LiquidNodeStore
 		*out = new(v1beta1.LiquidNodeStore)
 		**out = **in
+	}
+	if p.LiquidAdmission != nil {
+		in, out := &p.LiquidAdmission, &out.LiquidAdmission
+		*out = new(v1beta1.LiquidAdmission)
+		(*in).DeepCopyInto(*out)
 	}
 }
 
@@ -154,6 +160,7 @@ func forEachConfigMapEntry(profile *Profile, f func(fieldName string, ptr any)) 
 		"autopilotDisabled":      &profile.AutopilotDisabled,
 		"primaryAddressFamily":   &profile.PrimaryAddressFamily,
 		"liquidNodeStore":        &profile.LiquidNodeStore,
+		"liquidAdmission":        &profile.LiquidAdmission,
 	} {
 		f(fieldName, ptr)
 	}

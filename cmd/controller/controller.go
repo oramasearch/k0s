@@ -650,6 +650,9 @@ func (c *command) start(ctx context.Context, runtimeConfig *config.RuntimeConfig
 		clusterComponents.Add(ctx, etcdReconciler)
 	}
 
+	clusterComponents.Add(ctx, controller.NewCRDStack(adminClientFactory, leaderElector, "liquid-admission"))
+	clusterComponents.Add(ctx, controller.NewLiquidAdmission(adminClientFactory, leaderElector, c.K0sVars))
+
 	if telemetry.IsEnabled() {
 		clusterComponents.Add(ctx, &telemetry.Component{
 			K0sVars:           c.K0sVars,

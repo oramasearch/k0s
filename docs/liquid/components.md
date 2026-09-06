@@ -7,6 +7,9 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 New liquid clusters declare 6 replaceable components in `spec.liquid.components`. The declarations persist in the cluster configuration, so upgrading the k0s binary does not select new component versions.
 
+`spec.liquid.admission` is a separate security control rather than a Helm component. Its
+policy sets and static Pod deployment are documented in [Image admission](admission.md).
+
 The worker runtime is declared separately at `spec.liquid.nodeStore.enabled`. It is not a Helm
 component: k0s embeds the pinned liquid executable, starts one node store and one proxy snapshotter
 on each managed Linux worker, and registers them through a k0s-managed containerd drop-in. See the

@@ -610,6 +610,7 @@ func (r *Reconciler) buildProfile(snapshot *snapshot) *workerconfig.Profile {
 		AutopilotDisabled:    r.autopilotDisabled,
 		PrimaryAddressFamily: r.primaryAddressFamily,
 		LiquidNodeStore:      snapshot.liquidNodeStore.DeepCopy(),
+		LiquidAdmission:      snapshot.liquidAdmission.DeepCopy(),
 	}
 
 	if workerProfile.NodeLocalLoadBalancing != nil {
