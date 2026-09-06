@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: liquid-admission
+  namespace: kube-system
+spec:
+  selector:
+    app.kubernetes.io/component: liquid-admission
+  ports:
+  - name: https
+    port: 443
+    targetPort: 9443
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: liquid-admission.k0sproject.io
+webhooks:
+- name: admission.liquid.k0sproject.io
+  admissionReviewVersions: ["v1"]
+  sideEffects: None
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  timeoutSeconds: 10
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values: ["kube-system"]
+  clientConfig:
+    service:
+      namespace: kube-system
+      name: liquid-admission
+      path: /admission/review
+      port: 443
+    caBundle: ""
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]

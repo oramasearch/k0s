@@ -87,6 +87,9 @@ runtime and the chunk store:
 - lifecycle runbooks and SSH automation for upgrades, recovery, node replacement,
   certificate rotation, and metrics for those declared components.
 
+Admission verification is a k0s static-Pod and webhook integration around the embedded
+liquid verifier; its policy and operations are documented in `docs/liquid/admission.md`.
+
 See `docs/features/13-deployment-runtime.md` and `docs/features/22-change-capture.md` in
 the liquid repository.
 

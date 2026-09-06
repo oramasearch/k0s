@@ -26,6 +26,7 @@ import (
 	"github.com/k0sproject/k0s/pkg/component/worker"
 	workerconfig "github.com/k0sproject/k0s/pkg/component/worker/config"
 	"github.com/k0sproject/k0s/pkg/component/worker/containerd"
+	"github.com/k0sproject/k0s/pkg/component/worker/liquidadmission"
 	"github.com/k0sproject/k0s/pkg/component/worker/liquidsnapshotter"
 	"github.com/k0sproject/k0s/pkg/component/worker/nllb"
 	"github.com/k0sproject/k0s/pkg/config"
@@ -244,13 +245,19 @@ func (c *Command) Start(ctx context.Context, nodeName apitypes.NodeName, kubelet
 
 	var staticPods worker.StaticPods
 
+	admissionEnabled := runtime.GOOS == "linux" && workerConfig.LiquidAdmission != nil && workerConfig.LiquidAdmission.Enabled
+	if workerConfig.NodeLocalLoadBalancing.IsEnabled() || admissionEnabled {
+		sp := worker.NewStaticPods()
+		staticPods = sp
+		componentManager.Add(ctx, sp)
+	}
+
 	if workerConfig.NodeLocalLoadBalancing.IsEnabled() {
 		if controller != nil && controller.IsSingleNode() {
 			return errors.New("node-local load balancing cannot be used in a single-node cluster")
 		}
 
-		sp := worker.NewStaticPods()
-		reconciler, err := nllb.NewReconciler(c.K0sVars, sp, c.WorkerProfile, *workerConfig.DeepCopy())
+		reconciler, err := nllb.NewReconciler(c.K0sVars, staticPods, c.WorkerProfile, *workerConfig.DeepCopy())
 		if err != nil {
 			return fmt.Errorf("failed to create node-local load balancer reconciler: %w", err)
 		}
@@ -259,10 +266,11 @@ func (c *Command) Start(ctx context.Context, nodeName apitypes.NodeName, kubelet
 		if controller == nil {
 			kubeletKubeconfigPath = reconciler.GetKubeletKubeconfigPath()
 		}
-		staticPods = sp
-
-		componentManager.Add(ctx, sp)
 		componentManager.Add(ctx, reconciler)
+	}
+
+	if admissionEnabled {
+		componentManager.Add(ctx, liquidadmission.NewReconciler(c.K0sVars, staticPods, workerConfig.PauseImage))
 	}
 
 	certManager := worker.NewCertificateManager(kubeletKubeconfigPath)

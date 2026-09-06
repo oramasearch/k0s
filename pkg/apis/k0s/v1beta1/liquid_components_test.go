@@ -19,6 +19,10 @@ func TestDefaultLiquidComponents(t *testing.T) {
 	assert.True(t, config.Spec.Liquid.NodeStore.Enabled)
 	require.NotNil(t, config.Spec.Liquid.Platform)
 	assert.Equal(t, "http://loki.liquid-system.svc.cluster.local:3100", config.Spec.Liquid.Platform.LogsEndpoint)
+	require.NotNil(t, config.Spec.Liquid.Admission)
+	assert.True(t, config.Spec.Liquid.Admission.Enabled)
+	assert.Equal(t, LiquidAdmissionModeOff, config.Spec.Liquid.Admission.Mode)
+	assert.Equal(t, LiquidAdmissionFailurePolicyFail, config.Spec.Liquid.Admission.FailurePolicy)
 	assert.Equal(t, "custom", config.Spec.Network.Provider)
 
 	entries := config.Spec.Liquid.Components.Entries()
@@ -119,7 +123,32 @@ spec:
 `))
 	require.NoError(t, err)
 	assert.Nil(t, config.Spec.Liquid.NodeStore)
+	assert.Nil(t, config.Spec.Liquid.Admission)
 	assert.Equal(t, "custom", config.Spec.Network.Provider)
+	assert.NoError(t, errors.Join(config.Validate()...))
+}
+
+func TestLiquidAdmissionValidation(t *testing.T) {
+	config := DefaultClusterConfig()
+	config.Spec.Liquid.Admission.Mode = "invalid"
+	config.Spec.Liquid.Admission.FailurePolicy = "Ignore"
+
+	err := errors.Join(config.Validate()...)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "admission.mode")
+	assert.ErrorContains(t, err, "admission.failurePolicy")
+}
+
+func TestLiquidAdmissionRequiresStoreWithoutNodeStore(t *testing.T) {
+	config := DefaultClusterConfig()
+	config.Spec.Liquid.Admission.Mode = LiquidAdmissionModeAttestation
+	config.Spec.Liquid.NodeStore.Enabled = false
+
+	err := errors.Join(config.Validate()...)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "admission.attestationStore")
+
+	config.Spec.Liquid.Admission.AttestationStore = "https://attestations.example"
 	assert.NoError(t, errors.Join(config.Validate()...))
 }
 

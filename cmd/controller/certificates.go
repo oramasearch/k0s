@@ -224,6 +224,24 @@ func (c *Certificates) Init(ctx context.Context) error {
 		return err
 	})
 
+	eg.Go(func() error {
+		admissionReq := certificate.Request{
+			Name:   "liquid-admission",
+			CN:     "liquid-admission",
+			O:      "kubernetes",
+			CACert: caCertPath,
+			CAKey:  caCertKey,
+			Hostnames: []string{
+				"liquid-admission",
+				"liquid-admission.kube-system",
+				"liquid-admission.kube-system.svc",
+				"liquid-admission.kube-system.svc." + c.ClusterSpec.Network.ClusterDomain,
+			},
+		}
+		_, err := c.CertManager.EnsureCertificate(admissionReq, users.RootUID, c.ClusterSpec.API.CA.CertificatesExpireAfter.Duration)
+		return err
+	})
+
 	return eg.Wait()
 }
 

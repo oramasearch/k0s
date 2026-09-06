@@ -39,6 +39,7 @@ type configSnapshot struct {
 	pauseImage             *v1beta1.ImageSpec
 	pauseWindowsImage      *v1beta1.ImageSpec
 	liquidNodeStore        *v1beta1.LiquidNodeStore
+	liquidAdmission        *v1beta1.LiquidAdmission
 }
 
 func (s *snapshot) DeepCopy() *snapshot {
@@ -75,6 +76,9 @@ func (s *configSnapshot) DeepCopyInto(out *configSnapshot) {
 	if s.liquidNodeStore != nil {
 		out.liquidNodeStore = s.liquidNodeStore.DeepCopy()
 	}
+	if s.liquidAdmission != nil {
+		out.liquidAdmission = s.liquidAdmission.DeepCopy()
+	}
 }
 
 // takeConfigSnapshot converts ClusterSpec to a delta snapshot
@@ -87,8 +91,10 @@ func takeConfigSnapshot(spec *v1beta1.ClusterSpec) configSnapshot {
 	}
 
 	var liquidNodeStore *v1beta1.LiquidNodeStore
+	var liquidAdmission *v1beta1.LiquidAdmission
 	if spec.Liquid != nil {
 		liquidNodeStore = spec.Liquid.NodeStore.DeepCopy()
+		liquidAdmission = spec.Liquid.Admission.DeepCopy()
 	}
 
 	return configSnapshot{
@@ -101,5 +107,6 @@ func takeConfigSnapshot(spec *v1beta1.ClusterSpec) configSnapshot {
 		spec.Images.Pause.DeepCopy(),
 		spec.Images.Windows.Pause.DeepCopy(),
 		liquidNodeStore,
+		liquidAdmission,
 	}
 }

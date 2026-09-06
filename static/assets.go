@@ -47,6 +47,12 @@ var (
 	liquidPlatformSource string
 )
 
+var (
+	//go:embed manifests/liquid/admission
+	liquidAdmissionManifests embed.FS
+	LiquidAdmissionManifests fs.FS = subFS(liquidAdmissionManifests, "manifests", "liquid", "admission")
+)
+
 // RenderTenantNamespaceProfile renders the liquid namespace baseline for name.
 func RenderTenantNamespaceProfile(name string) ([]byte, error) {
 	if problems := validation.IsDNS1123Label(name); len(problems) != 0 {

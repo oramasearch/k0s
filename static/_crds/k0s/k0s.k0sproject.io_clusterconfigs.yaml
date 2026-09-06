@@ -524,6 +524,41 @@ spec:
               liquid:
                 description: LiquidSpec contains the liquid-specific cluster configuration.
                 properties:
+                  admission:
+                    description: LiquidAdmission declares the cluster default for
+                      image-attestation admission.
+                    properties:
+                      attestationStore:
+                        type: string
+                      enabled:
+                        type: boolean
+                      exempt:
+                        items:
+                          type: string
+                        type: array
+                      failurePolicy:
+                        enum:
+                        - Fail
+                        type: string
+                      issuers:
+                        items:
+                          type: string
+                        type: array
+                      mode:
+                        enum:
+                        - "off"
+                        - attestation
+                        - attestation+log
+                        type: string
+                      profiles:
+                        items:
+                          type: string
+                        type: array
+                    required:
+                    - enabled
+                    - failurePolicy
+                    - mode
+                    type: object
                   components:
                     description: LiquidComponents contains every component bundled
                       by liquid.

@@ -76,6 +76,8 @@ func renderComponentsPage() (string, error) {
 	page.WriteString("# Liquid components\n\n")
 	fmt.Fprintf(&page, "New liquid clusters declare %d replaceable components in `spec.liquid.components`. ", len(components.Entries()))
 	page.WriteString("The declarations persist in the cluster configuration, so upgrading the k0s binary does not select new component versions.\n\n")
+	page.WriteString("`spec.liquid.admission` is a separate security control rather than a Helm component. Its\n")
+	page.WriteString("policy sets and static Pod deployment are documented in [Image admission](admission.md).\n\n")
 	page.WriteString("The worker runtime is declared separately at `spec.liquid.nodeStore.enabled`. It is not a Helm\n")
 	page.WriteString("component: k0s embeds the pinned liquid executable, starts one node store and one proxy snapshotter\n")
 	page.WriteString("on each managed Linux worker, and registers them through a k0s-managed containerd drop-in. See the\n")

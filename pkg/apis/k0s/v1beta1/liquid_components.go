@@ -22,6 +22,11 @@ const (
 
 	LiquidReplacementManaged  = "managed"
 	LiquidReplacementExternal = "external"
+
+	LiquidAdmissionModeOff            = "off"
+	LiquidAdmissionModeAttestation    = "attestation"
+	LiquidAdmissionModeAttestationLog = "attestation+log"
+	LiquidAdmissionFailurePolicyFail  = "Fail"
 )
 
 // LiquidSpec contains the liquid-specific cluster configuration.
@@ -29,6 +34,7 @@ type LiquidSpec struct {
 	Components *LiquidComponents `json:"components,omitempty"`
 	NodeStore  *LiquidNodeStore  `json:"nodeStore,omitempty"`
 	Platform   *LiquidPlatform   `json:"platform,omitempty"`
+	Admission  *LiquidAdmission  `json:"admission,omitempty"`
 }
 
 // LiquidNodeStore declares the chunk-aware runtime store on workers.
@@ -40,6 +46,19 @@ type LiquidNodeStore struct {
 type LiquidPlatform struct {
 	ACMEDirectory string `json:"acmeDirectory,omitempty"`
 	LogsEndpoint  string `json:"logsEndpoint"`
+}
+
+// LiquidAdmission declares the cluster default for image-attestation admission.
+type LiquidAdmission struct {
+	Enabled bool `json:"enabled"`
+	// +kubebuilder:validation:Enum=off;attestation;attestation+log
+	Mode     string   `json:"mode"`
+	Issuers  []string `json:"issuers,omitempty"`
+	Profiles []string `json:"profiles,omitempty"`
+	Exempt   []string `json:"exempt,omitempty"`
+	// +kubebuilder:validation:Enum=Fail
+	FailurePolicy    string `json:"failurePolicy"`
+	AttestationStore string `json:"attestationStore,omitempty"`
 }
 
 // LiquidComponents contains every component bundled by liquid.
@@ -81,6 +100,11 @@ func DefaultLiquidSpec() *LiquidSpec {
 		},
 		Platform: &LiquidPlatform{
 			LogsEndpoint: "http://loki.liquid-system.svc.cluster.local:3100",
+		},
+		Admission: &LiquidAdmission{
+			Enabled:       true,
+			Mode:          LiquidAdmissionModeOff,
+			FailurePolicy: LiquidAdmissionFailurePolicyFail,
 		},
 		Components: &LiquidComponents{
 			Cilium: LiquidComponent{
@@ -201,6 +225,13 @@ func (l *LiquidSpec) Validate() []error {
 	} else {
 		errs = append(errs, l.Platform.validate(field.NewPath("platform"))...)
 	}
+	if l.Admission != nil {
+		errs = append(errs, l.Admission.Validate(field.NewPath("admission"))...)
+		if l.Admission.Enabled && l.Admission.Mode != LiquidAdmissionModeOff &&
+			(l.NodeStore == nil || !l.NodeStore.Enabled) && l.Admission.AttestationStore == "" {
+			errs = append(errs, field.Required(field.NewPath("admission", "attestationStore"), "an enforcing policy without a node store requires an attestation store"))
+		}
+	}
 
 	return errs
 }
@@ -214,6 +245,30 @@ func (p *LiquidPlatform) validate(path *field.Path) []error {
 	}
 	if err := validateLiquidEndpoint(p.LogsEndpoint); err != nil {
 		errs = append(errs, field.Invalid(path.Child("logsEndpoint"), p.LogsEndpoint, err.Error()))
+	}
+	return errs
+}
+
+// Validate checks the admission default is safe for fail-closed webhook wiring.
+func (a *LiquidAdmission) Validate(path *field.Path) []error {
+	if a == nil {
+		return nil
+	}
+
+	var errs []error
+	if a.Mode != LiquidAdmissionModeOff &&
+		a.Mode != LiquidAdmissionModeAttestation &&
+		a.Mode != LiquidAdmissionModeAttestationLog {
+		errs = append(errs, field.NotSupported(path.Child("mode"), a.Mode, []string{
+			LiquidAdmissionModeOff,
+			LiquidAdmissionModeAttestation,
+			LiquidAdmissionModeAttestationLog,
+		}))
+	}
+	if a.FailurePolicy != LiquidAdmissionFailurePolicyFail {
+		errs = append(errs, field.NotSupported(path.Child("failurePolicy"), a.FailurePolicy, []string{
+			LiquidAdmissionFailurePolicyFail,
+		}))
 	}
 	return errs
 }
