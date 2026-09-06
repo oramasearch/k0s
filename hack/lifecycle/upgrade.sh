@@ -46,7 +46,7 @@ binary_url_for_platform() {
 plan_state() {
   local controller="$1"
 
-  lifecycle_k0s "$controller" kc get plan autopilot -o jsonpath='{.status.state}' 2>/dev/null || true
+  lifecycle_k0s_timed "$controller" kc get plan autopilot -o jsonpath='{.status.state}' 2>/dev/null || true
 }
 
 wait_for_plan() {

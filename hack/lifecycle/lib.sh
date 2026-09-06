@@ -8,6 +8,7 @@ set -euo pipefail
 readonly lifecycle_k0s="${K0S_LIFECYCLE_K0S:-/usr/local/bin/k0s}"
 readonly lifecycle_timeout="${K0S_LIFECYCLE_TIMEOUT:-900}"
 readonly lifecycle_poll_interval="${K0S_LIFECYCLE_POLL_INTERVAL:-5}"
+readonly lifecycle_poll_command_timeout="${K0S_LIFECYCLE_POLL_COMMAND_TIMEOUT:-60}"
 
 declare -a lifecycle_records=()
 declare -a lifecycle_controllers=()
@@ -157,6 +158,26 @@ lifecycle_ssh_pipe() {
   "${lifecycle_ssh[@]}" "$target" "$command"
 }
 
+lifecycle_ssh_run_timed() {
+  local timeout="$1"
+  local process
+  local elapsed=0
+
+  shift
+  lifecycle_ssh_run "$@" &
+  process=$!
+  while kill -0 "$process" 2>/dev/null; do
+    if [ "$elapsed" -ge "$timeout" ]; then
+      kill "$process" 2>/dev/null || true
+      wait "$process" || true
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  wait "$process"
+}
+
 lifecycle_scp_to() {
   local source="$1"
   local node="$2"
@@ -181,6 +202,13 @@ lifecycle_k0s_pipe() {
   lifecycle_ssh_pipe "$node" "$lifecycle_k0s" "$@"
 }
 
+lifecycle_k0s_timed() {
+  local node="$1"
+  shift
+
+  lifecycle_ssh_run_timed "$lifecycle_poll_command_timeout" "$node" "$lifecycle_k0s" "$@"
+}
+
 lifecycle_wait_for() {
   local description="$1"
   shift
@@ -198,7 +226,7 @@ lifecycle_wait_for() {
 lifecycle_wait_for_api() {
   local controller="$1"
 
-  lifecycle_wait_for "the API on $controller" lifecycle_k0s "$controller" kc get --raw=/readyz
+  lifecycle_wait_for "the API on $controller" lifecycle_k0s_timed "$controller" kc get --raw=/readyz
 }
 
 lifecycle_controller_args() {
