@@ -4,9 +4,9 @@
 package liquid
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -34,7 +34,7 @@ func TestQueryLoki(t *testing.T) {
 		assert.Equal(t, `{namespace="preview-change-21",pod="api-7b9d8f"}`, request.URL.Query().Get("query"))
 		assert.Equal(t, "25", request.URL.Query().Get("limit"))
 		assert.Equal(t, "backward", request.URL.Query().Get("direction"))
-		assert.Equal(t, fmt.Sprint(now.Add(-time.Minute).UnixNano()), request.URL.Query().Get("start"))
+		assert.Equal(t, strconv.FormatInt(now.Add(-time.Minute).UnixNano(), 10), request.URL.Query().Get("start"))
 		response.Header().Set("Content-Type", "application/json")
 		_, _ = response.Write([]byte(`{
   "status": "success",
