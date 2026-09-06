@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 k0s authors
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Apply signed k0s node configuration
+ConditionPathExists=/etc/k0s/node-config-input.yaml
+Before=k0s.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/k0s node-config /etc/k0s/node-config-input.yaml
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

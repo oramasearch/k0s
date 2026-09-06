@@ -15,6 +15,8 @@ import (
 	fakehelmv1beta1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/helm/v1beta1/fake"
 	k0sv1beta1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/k0s/v1beta1"
 	fakek0sv1beta1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/k0s/v1beta1/fake"
+	liquidv1alpha1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/liquid/v1alpha1"
+	fakeliquidv1alpha1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/liquid/v1alpha1/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -106,4 +108,9 @@ func (c *Clientset) HelmV1beta1() helmv1beta1.HelmV1beta1Interface {
 // K0sV1beta1 retrieves the K0sV1beta1Client
 func (c *Clientset) K0sV1beta1() k0sv1beta1.K0sV1beta1Interface {
 	return &fakek0sv1beta1.FakeK0sV1beta1{Fake: &c.Fake}
+}
+
+// LiquidV1alpha1 retrieves the LiquidV1alpha1Client
+func (c *Clientset) LiquidV1alpha1() liquidv1alpha1.LiquidV1alpha1Interface {
+	return &fakeliquidv1alpha1.FakeLiquidV1alpha1{Fake: &c.Fake}
 }

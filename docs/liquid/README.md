@@ -10,6 +10,10 @@ remains unchanged unless an upstream behavior itself changes.
 
 - [Chunk-aware node images](chunk-aware-node.md) describes the embedded node store, OCI
   annotation contract, containerd proxy snapshotter, cross-image chunk reuse, and fallback path.
+- [Immutable node images](node-image.md) describes the bootc host contract, signed
+  machine configuration, image-swap rollout, health gate, and automatic rollback.
+- [Break-glass node access](break-glass.md) gives the certificate-only, time-bounded
+  procedure and the lake audit records required for every access window.
 - [Image admission](admission.md) describes the liquid verifier, namespaced policy routing,
   static Pod deployment, certificate handling, and fail-closed behavior.
 - [Declared components](components.md) covers pinned versions, upgrades, and external

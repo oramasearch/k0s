@@ -66,6 +66,7 @@ func TestUnknownSubCommandsAreRejected(t *testing.T) {
 		"airgap bundle-artifacts",
 		"kubeconfig create",
 		"liquid logs",
+		"liquid node-image status",
 		"liquid tenant-profile",
 		"token invalidate",
 		"worker",

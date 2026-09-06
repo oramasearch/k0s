@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 k0s authors
+# SPDX-License-Identifier: Apache-2.0
+
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+PubkeyAuthentication yes
+AuthorizedKeysFile none
+TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem
+AuthorizedPrincipalsFile /run/k0s/break-glass-principals
+PermitRootLogin prohibit-password
+AllowUsers root
+ForceCommand /usr/local/bin/k0s liquid break-glass-session

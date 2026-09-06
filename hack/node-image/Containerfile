@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 k0s authors
+# SPDX-License-Identifier: Apache-2.0
+
+ARG BOOTC_BASE=quay.io/centos-bootc/centos-bootc:stream10
+FROM ${BOOTC_BASE}
+
+RUN dnf -y install openssh-server \
+    && dnf clean all \
+    && passwd --lock root \
+    && rm -f /usr/bin/dnf /usr/bin/dnf5 /usr/bin/yum /usr/bin/rpm /usr/bin/microdnf \
+    && systemctl disable sshd.service \
+    && systemctl enable k0s-node-config.service k0s.service k0s-node-agent.service
+
+COPY k0s /usr/local/bin/k0s
+COPY node-config-signing.pub /usr/share/k0s/node-config-signing.pub
+COPY k0s-node-launch.sh /usr/libexec/k0s-node-launch
+COPY sshd_config /etc/ssh/sshd_config.d/90-k0s-break-glass.conf
+COPY systemd/k0s-node-config.service /usr/lib/systemd/system/k0s-node-config.service
+COPY systemd/k0s.service /usr/lib/systemd/system/k0s.service
+COPY systemd/k0s-node-agent.service /usr/lib/systemd/system/k0s-node-agent.service
+
+RUN chmod 0755 /usr/local/bin/k0s /usr/libexec/k0s-node-launch \
+    && mkdir -p /etc/k0s /var/lib/k0s \
+    && rm -f /etc/ssh/ssh_host_*

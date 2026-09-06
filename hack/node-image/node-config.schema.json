@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://k0sproject.io/liquid/node-config.schema.json",
+  "title": "Signed k0s immutable node configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "spec", "signature"],
+  "properties": {
+    "apiVersion": {"const": "liquid.k0sproject.io/v1alpha1"},
+    "kind": {"const": "NodeConfig"},
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "trustedUserCA", "breakGlass"],
+      "properties": {
+        "role": {"enum": ["controller", "controller+worker", "worker"]},
+        "joinTokenRef": {"type": "string", "pattern": "^/"},
+        "trustedUserCA": {"type": "string", "pattern": "^ssh-ed25519 "},
+        "breakGlass": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "maxTTLSeconds", "auditEndpoint"],
+          "properties": {
+            "enabled": {"const": true},
+            "maxTTLSeconds": {"type": "integer", "minimum": 1, "maximum": 3600},
+            "auditEndpoint": {"type": "string", "pattern": "^https://"}
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyID", "value"],
+      "properties": {
+        "keyID": {"type": "string", "minLength": 1},
+        "value": {"type": "string", "contentEncoding": "base64"}
+      }
+    }
+  }
+}

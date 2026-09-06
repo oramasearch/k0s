@@ -13,6 +13,7 @@ import (
 	etcdv1beta1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/etcd/v1beta1"
 	helmv1beta1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/helm/v1beta1"
 	k0sv1beta1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/k0s/v1beta1"
+	liquidv1alpha1 "github.com/k0sproject/k0s/pkg/client/clientset/typed/liquid/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -24,6 +25,7 @@ type Interface interface {
 	EtcdV1beta1() etcdv1beta1.EtcdV1beta1Interface
 	HelmV1beta1() helmv1beta1.HelmV1beta1Interface
 	K0sV1beta1() k0sv1beta1.K0sV1beta1Interface
+	LiquidV1alpha1() liquidv1alpha1.LiquidV1alpha1Interface
 }
 
 // Clientset contains the clients for groups.
@@ -33,6 +35,7 @@ type Clientset struct {
 	etcdV1beta1      *etcdv1beta1.EtcdV1beta1Client
 	helmV1beta1      *helmv1beta1.HelmV1beta1Client
 	k0sV1beta1       *k0sv1beta1.K0sV1beta1Client
+	liquidV1alpha1   *liquidv1alpha1.LiquidV1alpha1Client
 }
 
 // AutopilotV1beta2 retrieves the AutopilotV1beta2Client
@@ -53,6 +56,11 @@ func (c *Clientset) HelmV1beta1() helmv1beta1.HelmV1beta1Interface {
 // K0sV1beta1 retrieves the K0sV1beta1Client
 func (c *Clientset) K0sV1beta1() k0sv1beta1.K0sV1beta1Interface {
 	return c.k0sV1beta1
+}
+
+// LiquidV1alpha1 retrieves the LiquidV1alpha1Client
+func (c *Clientset) LiquidV1alpha1() liquidv1alpha1.LiquidV1alpha1Interface {
+	return c.liquidV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -115,6 +123,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.liquidV1alpha1, err = liquidv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
@@ -140,6 +152,7 @@ func New(c rest.Interface) *Clientset {
 	cs.etcdV1beta1 = etcdv1beta1.New(c)
 	cs.helmV1beta1 = helmv1beta1.New(c)
 	cs.k0sV1beta1 = k0sv1beta1.New(c)
+	cs.liquidV1alpha1 = liquidv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
