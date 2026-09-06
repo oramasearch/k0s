@@ -61,6 +61,7 @@ smoketests := \
 	check-kubectl \
 	check-liquid-components \
 	check-liquid-tenancy \
+	check-liquid-lifecycle \
 	check-kubeletcertrotate \
 	check-kuberouter \
 	check-kuberouter-ipv6 \

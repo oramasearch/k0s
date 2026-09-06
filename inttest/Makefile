@@ -89,6 +89,8 @@ check-liquid-components: TIMEOUT=20m
 
 check-liquid-tenancy: TIMEOUT=10m
 
+check-liquid-lifecycle: TIMEOUT=45m
+
 check-kubeletcertrotate: TIMEOUT=15m
 
 check-network-conformance-calico: TIMEOUT=15m
