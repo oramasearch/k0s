@@ -52,4 +52,7 @@ node's third inventory column. The replacement node needs k0s installed at
 `K0S_LIFECYCLE_K0S` and the storage-node prerequisites already present. Set
 `K0S_LIFECYCLE_STORAGE_RESCHEDULE_COMMAND` when an external storage provider
 needs an additional replica-rebuild action after a node replacement. The
-script uses that configured k0s path for the stop and reset operations too.
+script stops a detected OpenRC `k0sworker` or `k0scontroller` service before
+using that configured k0s path for the stop and reset operations. This prevents
+the service supervisor from restarting k0s during replacement on bootloose
+nodes while leaving systemd and direct k0s installations on their usual path.
