@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/client-go/rest"
 
 	"github.com/spf13/cobra"
 )
@@ -38,6 +40,11 @@ type logEntry struct {
 	timestamp time.Time
 	container string
 	line      string
+}
+
+type logsAccess struct {
+	endpoint string
+	client   *http.Client
 }
 
 type lokiQueryResponse struct {
@@ -71,14 +78,14 @@ func newLogsCmd() *cobra.Command {
 				return errors.New("since must not be negative")
 			}
 
-			endpoint, err := liquidLogsEndpoint(cmd)
+			access, err := liquidLogsAccess(cmd)
 			if err != nil {
 				return err
 			}
 			entries, err := queryLoki(
 				cmd.Context(),
-				&http.Client{Timeout: 30 * time.Second},
-				endpoint,
+				access.client,
+				access.endpoint,
 				namespace,
 				pod,
 				options,
@@ -111,18 +118,18 @@ func parsePodReference(reference string) (string, string, error) {
 	return namespace, pod, nil
 }
 
-func liquidLogsEndpoint(cmd *cobra.Command) (string, error) {
+func liquidLogsAccess(cmd *cobra.Command) (*logsAccess, error) {
 	opts, err := config.GetCmdOpts(cmd)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	restConfig, err := kubernetes.ClientConfig(kubernetes.KubeconfigFromFile(opts.K0sVars.AdminKubeConfigPath))
 	if err != nil {
-		return "", fmt.Errorf("can't load the admin kubeconfig: %w", err)
+		return nil, fmt.Errorf("can't load the admin kubeconfig: %w", err)
 	}
 	clients, err := clientset.NewForConfig(restConfig)
 	if err != nil {
-		return "", fmt.Errorf("can't create the Kubernetes client: %w", err)
+		return nil, fmt.Errorf("can't create the Kubernetes client: %w", err)
 	}
 	clusterConfig, err := clients.K0sV1beta1().ClusterConfigs(constant.ClusterConfigNamespace).Get(
 		cmd.Context(),
@@ -130,12 +137,73 @@ func liquidLogsEndpoint(cmd *cobra.Command) (string, error) {
 		metav1.GetOptions{},
 	)
 	if err != nil {
-		return "", fmt.Errorf("can't read the cluster configuration: %w", err)
+		return nil, fmt.Errorf("can't read the cluster configuration: %w", err)
 	}
 	if clusterConfig.Spec == nil || clusterConfig.Spec.Liquid == nil || clusterConfig.Spec.Liquid.Platform == nil {
-		return "", errors.New("the cluster has no liquid logs endpoint")
+		return nil, errors.New("the cluster has no liquid logs endpoint")
 	}
-	return clusterConfig.Spec.Liquid.Platform.LogsEndpoint, nil
+	return newLogsAccess(restConfig, clusterConfig.Spec.Liquid.Platform.LogsEndpoint)
+}
+
+func newLogsAccess(restConfig *rest.Config, endpoint string) (*logsAccess, error) {
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid logs endpoint: %w", err)
+	}
+	service, namespace, found := clusterService(parsed.Hostname())
+	if !found {
+		return &logsAccess{
+			endpoint: endpoint,
+			client:   &http.Client{Timeout: 30 * time.Second},
+		}, nil
+	}
+
+	transport, err := rest.TransportFor(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create Kubernetes service proxy transport: %w", err)
+	}
+	proxyURL, err := url.Parse(restConfig.Host)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Kubernetes API endpoint: %w", err)
+	}
+	port := parsed.Port()
+	if port == "" {
+		if parsed.Scheme == "https" {
+			port = "443"
+		} else {
+			port = "80"
+		}
+	}
+	serviceProxy := fmt.Sprintf("%s:%s:%s", parsed.Scheme, service, port)
+	proxyURL.Path = path.Join(
+		proxyURL.Path,
+		"api",
+		"v1",
+		"namespaces",
+		namespace,
+		"services",
+		serviceProxy,
+		"proxy",
+		parsed.Path,
+	)
+	return &logsAccess{
+		endpoint: proxyURL.String(),
+		client: &http.Client{
+			Timeout:   30 * time.Second,
+			Transport: transport,
+		},
+	}, nil
+}
+
+func clusterService(host string) (string, string, bool) {
+	labels := strings.Split(host, ".")
+	if len(labels) == 3 && labels[2] == "svc" {
+		return labels[0], labels[1], true
+	}
+	if len(labels) == 5 && labels[2] == "svc" && labels[3] == "cluster" && labels[4] == "local" {
+		return labels[0], labels[1], true
+	}
+	return "", "", false
 }
 
 func queryLoki(

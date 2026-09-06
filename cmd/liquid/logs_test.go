@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/client-go/rest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -83,4 +85,24 @@ func TestQueryLokiReportsFailure(t *testing.T) {
 		time.Now(),
 	)
 	require.ErrorContains(t, err, "503 Service Unavailable")
+}
+
+func TestNewLogsAccessUsesKubernetesServiceProxy(t *testing.T) {
+	access, err := newLogsAccess(
+		&rest.Config{Host: "https://127.0.0.1:6443"},
+		"http://loki.liquid-system.svc.cluster.local:3100",
+	)
+	require.NoError(t, err)
+	assert.Equal(
+		t,
+		"https://127.0.0.1:6443/api/v1/namespaces/liquid-system/services/http:loki:3100/proxy",
+		access.endpoint,
+	)
+	require.NotNil(t, access.client.Transport)
+}
+
+func TestNewLogsAccessKeepsExternalEndpoint(t *testing.T) {
+	access, err := newLogsAccess(&rest.Config{}, "https://logs.example/loki")
+	require.NoError(t, err)
+	assert.Equal(t, "https://logs.example/loki", access.endpoint)
 }

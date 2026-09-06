@@ -85,7 +85,9 @@ preserves the listener and cross-namespace route contract, and reports standard 
 `k0s liquid logs <namespace>/<pod>` reads the stored `logsEndpoint` and issues the same Loki query used
 by `environment_logs`, adding both namespace and pod labels. It prints timestamp, container, and line in
 chronological order. This is an operator shortcut and uses the controller admin kubeconfig only to read
-the cluster configuration; it does not call the Kubernetes pod log API.
+the cluster configuration. An in-cluster Service endpoint is reached through the authenticated
+Kubernetes Service proxy; an external endpoint is queried directly. The command does not call the
+Kubernetes pod log API.
 
 ## Environment policy
 
@@ -115,3 +117,12 @@ The Lake companion change owns the four pages and capability handlers. The orama
 change owns `LakeDomain`, environment and domain reconciliation, and the annotation derived from sealed
 references. Deploy record creation, the sealed envelope, and their existing client/operator contracts
 remain owned by liquid #84 and orama-operator #129.
+
+## Verification
+
+`make check-liquid-platform` starts one bootloose controller-worker with the declared components. It
+runs Pebble v2.10.1 as the ACME double and Loki v3.7.7 as the customer log endpoint, obtains a
+certificate through the Gateway API HTTP-01 solver, reaches an application `HTTPRoute` over TLS, reads
+the application's startup line through Vector and `k0s liquid logs`, and verifies that a Pod mounting a
+manually created Secret is refused in an environment namespace. The target is part of the smoketest
+list.
