@@ -63,3 +63,6 @@ the new service definition. This lets OpenRC register the replacement service
 before the script treats it as ready; systems without that script use `k0s
 start`. Controller configuration is staged in a temporary local file and its
 cleanup remains safe when the script runs with `set -u`.
+The drain's SSH operation is bounded by `K0S_LIFECYCLE_TIMEOUT`, independently
+of Kubernetes' `K0S_LIFECYCLE_DRAIN_TIMEOUT`, so a disconnected client cannot
+block the runbook indefinitely.

@@ -248,7 +248,15 @@ lifecycle_k0s_timed() {
   local node="$1"
   shift
 
-  lifecycle_ssh_run_timed "$lifecycle_poll_command_timeout" "$node" "$lifecycle_k0s" "$@"
+  lifecycle_k0s_with_timeout "$lifecycle_poll_command_timeout" "$node" "$@"
+}
+
+lifecycle_k0s_with_timeout() {
+  local timeout="$1"
+  local node="$2"
+
+  shift 2
+  lifecycle_ssh_run_timed "$timeout" "$node" "$lifecycle_k0s" "$@"
 }
 
 lifecycle_wait_for() {

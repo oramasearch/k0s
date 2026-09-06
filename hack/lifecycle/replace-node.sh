@@ -93,7 +93,7 @@ main() {
 
   case "$role" in
     worker)
-      lifecycle_k0s "$operator" kc drain "$node" --ignore-daemonsets --delete-emptydir-data --timeout="${K0S_LIFECYCLE_DRAIN_TIMEOUT:-10m}"
+      lifecycle_k0s_with_timeout "$lifecycle_timeout" "$operator" kc drain "$node" --ignore-daemonsets --delete-emptydir-data --timeout="${K0S_LIFECYCLE_DRAIN_TIMEOUT:-10m}"
       lifecycle_k0s "$operator" kc delete node "$node" --ignore-not-found
       prepare_replacement_host "$node"
       token="$(lifecycle_k0s "$operator" token create --role worker --expiry="${K0S_LIFECYCLE_TOKEN_EXPIRY:-1h}")"
