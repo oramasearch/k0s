@@ -145,7 +145,7 @@ main() {
     done
   } >"$plan"
 
-  lifecycle_k0s_pipe "$controller" kc apply -f - <"$plan"
+  lifecycle_k0s_pipe_timed "$lifecycle_timeout" "$plan" "$controller" kc apply -f -
   lifecycle_wait_for "the autopilot plan" wait_for_plan "${lifecycle_controllers[@]}"
   lifecycle_k0s "$controller" kc get plan autopilot -o yaml
 }

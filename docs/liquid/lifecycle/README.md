@@ -30,7 +30,8 @@ Polling SSH commands have a 60-second bound by default so a stalled API query
 cannot block an operation forever; adjust it only with
 `K0S_LIFECYCLE_POLL_COMMAND_TIMEOUT` for a known slower connection. The bound
 tracks the direct SSH process, so expiry terminates that process before the
-next poll.
+next poll. The plan-application SSH pipeline is likewise bounded by
+`K0S_LIFECYCLE_TIMEOUT`.
 
 Run [health checks](../../../hack/lifecycle/check-health.sh) before and after
 any disruptive operation. The checks require all worker nodes to be Ready,

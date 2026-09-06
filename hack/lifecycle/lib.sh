@@ -158,6 +158,32 @@ lifecycle_ssh_pipe() {
   "${lifecycle_ssh[@]}" "$target" "$command"
 }
 
+lifecycle_ssh_pipe_timed() {
+  local timeout="$1"
+  local source="$2"
+  local node="$3"
+  local target
+  local command
+  local process
+  local elapsed=0
+
+  shift 3
+  target="$(lifecycle_target_for "$node")"
+  command="$(lifecycle_remote_command "$@")"
+  "${lifecycle_ssh[@]}" "$target" "$command" <"$source" &
+  process=$!
+  while kill -0 "$process" 2>/dev/null; do
+    if [ "$elapsed" -ge "$timeout" ]; then
+      kill "$process" 2>/dev/null || true
+      wait "$process" || true
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  wait "$process"
+}
+
 lifecycle_ssh_run_timed() {
   local timeout="$1"
   local node
@@ -207,6 +233,15 @@ lifecycle_k0s_pipe() {
   shift
 
   lifecycle_ssh_pipe "$node" "$lifecycle_k0s" "$@"
+}
+
+lifecycle_k0s_pipe_timed() {
+  local timeout="$1"
+  local source="$2"
+  local node="$3"
+
+  shift 3
+  lifecycle_ssh_pipe_timed "$timeout" "$source" "$node" "$lifecycle_k0s" "$@"
 }
 
 lifecycle_k0s_timed() {
