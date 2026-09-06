@@ -85,8 +85,7 @@ main() {
       token="$(lifecycle_k0s "$operator" token create --role worker --expiry="${K0S_LIFECYCLE_TOKEN_EXPIRY:-1h}")"
       printf '%s' "$token" | lifecycle_ssh_pipe "$node" install -m 0600 /dev/stdin /tmp/k0s-worker.token
       lifecycle_worker_args
-      lifecycle_install "$node" worker --force --token-file=/tmp/k0s-worker.token
-      lifecycle_k0s "$node" start
+      lifecycle_install "$node" worker --force --start --token-file=/tmp/k0s-worker.token
       lifecycle_wait_for "worker $node" wait_for_worker "$operator" "$node"
       ;;
     controller)
@@ -103,8 +102,7 @@ main() {
       token="$(lifecycle_k0s "$operator" token create --role controller --expiry="${K0S_LIFECYCLE_TOKEN_EXPIRY:-1h}")"
       printf '%s' "$token" | lifecycle_ssh_pipe "$node" install -m 0600 /dev/stdin /tmp/k0s-controller.token
       lifecycle_controller_args
-      lifecycle_install "$node" controller --force --config=/etc/k0s/k0s.yaml --token-file=/tmp/k0s-controller.token
-      lifecycle_k0s "$node" start
+      lifecycle_install "$node" controller --force --start --config=/etc/k0s/k0s.yaml --token-file=/tmp/k0s-controller.token
       lifecycle_wait_for_api "$node"
       lifecycle_wait_for "etcd member $node" wait_for_controller_member "$operator" "$node"
       ;;
