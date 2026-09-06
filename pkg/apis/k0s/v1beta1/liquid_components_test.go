@@ -17,16 +17,39 @@ func TestDefaultLiquidComponents(t *testing.T) {
 	require.NotNil(t, config.Spec.Liquid.Components)
 	require.NotNil(t, config.Spec.Liquid.NodeStore)
 	assert.True(t, config.Spec.Liquid.NodeStore.Enabled)
+	require.NotNil(t, config.Spec.Liquid.Platform)
+	assert.Equal(t, "http://loki.liquid-system.svc.cluster.local:3100", config.Spec.Liquid.Platform.LogsEndpoint)
 	assert.Equal(t, "custom", config.Spec.Network.Provider)
 
 	entries := config.Spec.Liquid.Components.Entries()
-	require.Len(t, entries, 4)
+	require.Len(t, entries, 6)
 	for _, entry := range entries {
 		assert.True(t, entry.Component.Enabled, entry.Name)
 		assert.NotEmpty(t, entry.Component.Version, entry.Name)
 		assert.Equal(t, LiquidReplacementManaged, entry.Component.Replacement, entry.Name)
 	}
 	assert.NoError(t, errors.Join(config.Validate()...))
+}
+
+func TestLiquidPlatformValidation(t *testing.T) {
+	config := DefaultClusterConfig()
+	config.Spec.Liquid.Platform.ACMEDirectory = "ftp://lake.example/acme/directory"
+	config.Spec.Liquid.Platform.LogsEndpoint = "https://logs.example/path?token=secret"
+
+	err := errors.Join(config.Validate()...)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "platform.acmeDirectory")
+	assert.ErrorContains(t, err, "platform.logsEndpoint")
+}
+
+func TestLiquidLogShipperValuesUseConfiguredEndpoint(t *testing.T) {
+	liquid := DefaultLiquidSpec()
+	liquid.Platform.LogsEndpoint = "https://logs.example/loki"
+
+	values := liquid.LiquidComponentValues(LiquidComponentLogShipper)
+	assert.Contains(t, values, `endpoint: "https://logs.example/loki"`)
+	assert.NotContains(t, values, "${LIQUID_LOGS_ENDPOINT}")
+	assert.Contains(t, values, "kubernetes.pod_namespace")
 }
 
 func TestExistingConfigDoesNotAcquireLiquidDefaults(t *testing.T) {
@@ -63,6 +86,20 @@ spec:
           repository: https://wiremind.github.io/wiremind-helm-charts
           name: gateway-api-crds
         replacement: managed
+      certManager:
+        enabled: false
+        version: v1.21.1
+        chart:
+          repository: https://charts.jetstack.io
+          name: cert-manager
+        replacement: managed
+      logShipper:
+        enabled: false
+        version: 0.58.0
+        chart:
+          repository: https://helm.vector.dev
+          name: vector
+        replacement: managed
       localPath:
         enabled: false
         version: 0.0.38
@@ -77,6 +114,8 @@ spec:
           repository: https://charts.longhorn.io
           name: longhorn
         replacement: managed
+    platform:
+      logsEndpoint: http://loki.liquid-system.svc.cluster.local:3100
 `))
 	require.NoError(t, err)
 	assert.Nil(t, config.Spec.Liquid.NodeStore)

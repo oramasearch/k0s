@@ -341,11 +341,13 @@ status: {}
 func TestLiquidComponentCharts(t *testing.T) {
 	liquid := k0sv1beta1.DefaultLiquidSpec()
 	charts := liquidComponentCharts(liquid)
-	require.Len(t, charts, 4)
+	require.Len(t, charts, 6)
 
 	wantNames := []string{
 		"liquid-cilium",
 		"liquid-gateway-api",
+		"liquid-cert-manager",
+		"liquid-log-shipper",
 		"liquid-local-path",
 		"liquid-distributed-storage",
 	}
@@ -357,7 +359,9 @@ func TestLiquidComponentCharts(t *testing.T) {
 		assert.NotEmpty(t, chart.Repository.URL)
 		assert.False(t, chart.LeaveInstalled)
 	}
-	assert.Equal(t, "longhorn-system", charts[3].TargetNS)
+	assert.Equal(t, "cert-manager", charts[2].TargetNS)
+	assert.Equal(t, "longhorn-system", charts[5].TargetNS)
+	assert.Contains(t, charts[3].Values, `endpoint: "http://loki.liquid-system.svc.cluster.local:3100"`)
 
 	liquid.Components.GatewayAPI.Replacement = k0sv1beta1.LiquidReplacementExternal
 	charts = liquidComponentCharts(liquid)

@@ -528,6 +528,36 @@ spec:
                     description: LiquidComponents contains every component bundled
                       by liquid.
                     properties:
+                      certManager:
+                        description: LiquidComponent declares a replaceable, versioned
+                          component.
+                        properties:
+                          chart:
+                            description: LiquidComponentChart identifies a Helm chart
+                              and its repository.
+                            properties:
+                              name:
+                                type: string
+                              repository:
+                                type: string
+                            required:
+                            - name
+                            - repository
+                            type: object
+                          enabled:
+                            type: boolean
+                          replacement:
+                            type: string
+                          values:
+                            type: string
+                          version:
+                            type: string
+                        required:
+                        - chart
+                        - enabled
+                        - replacement
+                        - version
+                        type: object
                       cilium:
                         description: LiquidComponent declares a replaceable, versioned
                           component.
@@ -648,11 +678,43 @@ spec:
                         - replacement
                         - version
                         type: object
+                      logShipper:
+                        description: LiquidComponent declares a replaceable, versioned
+                          component.
+                        properties:
+                          chart:
+                            description: LiquidComponentChart identifies a Helm chart
+                              and its repository.
+                            properties:
+                              name:
+                                type: string
+                              repository:
+                                type: string
+                            required:
+                            - name
+                            - repository
+                            type: object
+                          enabled:
+                            type: boolean
+                          replacement:
+                            type: string
+                          values:
+                            type: string
+                          version:
+                            type: string
+                        required:
+                        - chart
+                        - enabled
+                        - replacement
+                        - version
+                        type: object
                     required:
+                    - certManager
                     - cilium
                     - distributedStorage
                     - gatewayAPI
                     - localPath
+                    - logShipper
                     type: object
                   nodeStore:
                     description: LiquidNodeStore declares the chunk-aware runtime
@@ -662,6 +724,17 @@ spec:
                         type: boolean
                     required:
                     - enabled
+                    type: object
+                  platform:
+                    description: LiquidPlatform identifies the cluster services used
+                      by the developer platform.
+                    properties:
+                      acmeDirectory:
+                        type: string
+                      logsEndpoint:
+                        type: string
+                    required:
+                    - logsEndpoint
                     type: object
                 type: object
               metricsServer:

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -14,6 +15,8 @@ import (
 const (
 	LiquidComponentCilium             = "cilium"
 	LiquidComponentGatewayAPI         = "gatewayAPI"
+	LiquidComponentCertManager        = "certManager"
+	LiquidComponentLogShipper         = "logShipper"
 	LiquidComponentLocalPath          = "localPath"
 	LiquidComponentDistributedStorage = "distributedStorage"
 
@@ -25,6 +28,7 @@ const (
 type LiquidSpec struct {
 	Components *LiquidComponents `json:"components,omitempty"`
 	NodeStore  *LiquidNodeStore  `json:"nodeStore,omitempty"`
+	Platform   *LiquidPlatform   `json:"platform,omitempty"`
 }
 
 // LiquidNodeStore declares the chunk-aware runtime store on workers.
@@ -32,10 +36,18 @@ type LiquidNodeStore struct {
 	Enabled bool `json:"enabled"`
 }
 
+// LiquidPlatform identifies the cluster services used by the developer platform.
+type LiquidPlatform struct {
+	ACMEDirectory string `json:"acmeDirectory,omitempty"`
+	LogsEndpoint  string `json:"logsEndpoint"`
+}
+
 // LiquidComponents contains every component bundled by liquid.
 type LiquidComponents struct {
 	Cilium             LiquidComponent `json:"cilium"`
 	GatewayAPI         LiquidComponent `json:"gatewayAPI"`
+	CertManager        LiquidComponent `json:"certManager"`
+	LogShipper         LiquidComponent `json:"logShipper"`
 	LocalPath          LiquidComponent `json:"localPath"`
 	DistributedStorage LiquidComponent `json:"distributedStorage"`
 }
@@ -67,6 +79,9 @@ func DefaultLiquidSpec() *LiquidSpec {
 		NodeStore: &LiquidNodeStore{
 			Enabled: true,
 		},
+		Platform: &LiquidPlatform{
+			LogsEndpoint: "http://loki.liquid-system.svc.cluster.local:3100",
+		},
 		Components: &LiquidComponents{
 			Cilium: LiquidComponent{
 				Enabled: true,
@@ -85,6 +100,26 @@ func DefaultLiquidSpec() *LiquidSpec {
 					Repository: "https://wiremind.github.io/wiremind-helm-charts",
 					Name:       "gateway-api-crds",
 				},
+				Replacement: LiquidReplacementManaged,
+			},
+			CertManager: LiquidComponent{
+				Enabled: true,
+				Version: "v1.21.1",
+				Chart: LiquidComponentChart{
+					Repository: "https://charts.jetstack.io",
+					Name:       "cert-manager",
+				},
+				Values:      "crds:\n  enabled: true\n  keep: true\nconfig:\n  gatewayAPI:\n    enabled: true\n",
+				Replacement: LiquidReplacementManaged,
+			},
+			LogShipper: LiquidComponent{
+				Enabled: true,
+				Version: "0.58.0",
+				Chart: LiquidComponentChart{
+					Repository: "https://helm.vector.dev",
+					Name:       "vector",
+				},
+				Values:      "role: Agent\ncustomConfig:\n  data_dir: /vector-data-dir\n  api:\n    enabled: true\n    address: 0.0.0.0:8686\n  sources:\n    kubernetes_logs:\n      type: kubernetes_logs\n  sinks:\n    loki:\n      type: loki\n      inputs:\n        - kubernetes_logs\n      endpoint: ${LIQUID_LOGS_ENDPOINT}\n      encoding:\n        codec: text\n      labels:\n        namespace: '{{ `{{ kubernetes.pod_namespace }}` }}'\n        pod: '{{ `{{ kubernetes.pod_name }}` }}'\n        container: '{{ `{{ kubernetes.container_name }}` }}'\n",
 				Replacement: LiquidReplacementManaged,
 			},
 			LocalPath: LiquidComponent{
@@ -120,6 +155,8 @@ func (c *LiquidComponents) Entries() []LiquidComponentEntry {
 	return []LiquidComponentEntry{
 		{Name: LiquidComponentCilium, Component: &c.Cilium},
 		{Name: LiquidComponentGatewayAPI, Component: &c.GatewayAPI},
+		{Name: LiquidComponentCertManager, Component: &c.CertManager},
+		{Name: LiquidComponentLogShipper, Component: &c.LogShipper},
 		{Name: LiquidComponentLocalPath, Component: &c.LocalPath},
 		{Name: LiquidComponentDistributedStorage, Component: &c.DistributedStorage},
 	}
@@ -132,6 +169,10 @@ func LiquidComponentChartResourceName(componentName string) string {
 		return "liquid-cilium"
 	case LiquidComponentGatewayAPI:
 		return "liquid-gateway-api"
+	case LiquidComponentCertManager:
+		return "liquid-cert-manager"
+	case LiquidComponentLogShipper:
+		return "liquid-log-shipper"
 	case LiquidComponentLocalPath:
 		return "liquid-local-path"
 	case LiquidComponentDistributedStorage:
@@ -155,8 +196,69 @@ func (l *LiquidSpec) Validate() []error {
 		componentPath := field.NewPath("components").Child(entry.Name)
 		errs = append(errs, entry.Component.validate(componentPath)...)
 	}
+	if l.Platform == nil {
+		errs = append(errs, field.Required(field.NewPath("platform"), "the platform endpoints must be declared"))
+	} else {
+		errs = append(errs, l.Platform.validate(field.NewPath("platform"))...)
+	}
 
 	return errs
+}
+
+func (p *LiquidPlatform) validate(path *field.Path) []error {
+	var errs []error
+	if p.ACMEDirectory != "" {
+		if err := validateLiquidEndpoint(p.ACMEDirectory); err != nil {
+			errs = append(errs, field.Invalid(path.Child("acmeDirectory"), p.ACMEDirectory, err.Error()))
+		}
+	}
+	if err := validateLiquidEndpoint(p.LogsEndpoint); err != nil {
+		errs = append(errs, field.Invalid(path.Child("logsEndpoint"), p.LogsEndpoint, err.Error()))
+	}
+	return errs
+}
+
+// Validate checks the cluster platform endpoints.
+func (p *LiquidPlatform) Validate() []error {
+	if p == nil {
+		return nil
+	}
+	return p.validate(field.NewPath("platform"))
+}
+
+func validateLiquidEndpoint(endpoint string) error {
+	if endpoint == "" {
+		return errors.New("endpoint is required")
+	}
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("invalid endpoint URL: %w", err)
+	}
+	if (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return errors.New("endpoint must be an HTTP or HTTPS URL")
+	}
+	if parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New("endpoint must not contain a query or fragment")
+	}
+	return nil
+}
+
+// LiquidComponentValues resolves cluster-specific placeholders in component values.
+func (l *LiquidSpec) LiquidComponentValues(componentName string) string {
+	if l == nil || l.Components == nil {
+		return ""
+	}
+	for _, entry := range l.Components.Entries() {
+		if entry.Name != componentName {
+			continue
+		}
+		values := entry.Component.Values
+		if componentName == LiquidComponentLogShipper && l.Platform != nil {
+			return strings.ReplaceAll(values, "${LIQUID_LOGS_ENDPOINT}", fmt.Sprintf("%q", l.Platform.LogsEndpoint))
+		}
+		return values
+	}
+	return ""
 }
 
 func (c *LiquidComponent) validate(path *field.Path) []error {
