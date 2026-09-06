@@ -115,6 +115,8 @@ k0s liquid node-image status
 k0s liquid node-image status node-build-42
 ```
 
+The optional name limits the table to one plan.
+
 ## Test harness
 
 [`hack/node-image/test/run.sh`](../../hack/node-image/test/run.sh) is the QEMU entry
