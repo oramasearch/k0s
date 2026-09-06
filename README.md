@@ -20,6 +20,19 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 ![k0s-logo-dark](docs/img/k0s-logo-2025-horizontal-inverted.svg#gh-dark-mode-only)
 ![k0s-logo-light](docs/img/k0s-logo-2025-horizontal.svg#gh-light-mode-only)
 
+## This fork
+
+`oramasearch/k0s` is a private copy of `k0sproject/k0s`. The `main` branch is a
+pristine upstream mirror; the `liquid` branch carries Orama's distribution work for
+liquid. Everything below this section is the upstream README, unchanged. What is
+specific to this copy lives in two places:
+
+- [`docs/liquid/README.md`](docs/liquid/README.md) indexes the liquid-specific
+  changes: chunk-aware node images, image admission, declared components,
+  multi-tenancy, the platform surface, the lifecycle runbooks and the upstream sync.
+- [`ORAMA-FORK.md`](ORAMA-FORK.md) records the branch model, the guarded upstream
+  sync and the licence obligations.
+
 <!-- Start Overview -->
 ## Overview
 
