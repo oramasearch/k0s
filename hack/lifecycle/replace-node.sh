@@ -110,7 +110,7 @@ main() {
       lifecycle_k0s "$operator" kc wait etcdmember "$node" --for condition=Joined=False --timeout="${K0S_LIFECYCLE_ETCD_TIMEOUT:-10m}"
       prepare_replacement_host "$node"
       config="$(mktemp)"
-      trap 'rm -f -- "$config"' EXIT
+      trap 'rm -f -- "${config:-}"' EXIT
       lifecycle_ssh_run "$operator" cat /etc/k0s/k0s.yaml >"$config"
       lifecycle_ssh_run "$node" mkdir -p /etc/k0s
       lifecycle_scp_to "$config" "$node" /etc/k0s/k0s.yaml

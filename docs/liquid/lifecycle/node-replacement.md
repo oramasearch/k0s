@@ -61,4 +61,5 @@ command is parsed there. The replacement installation is followed by a
 service start retried through the detected init script after k0s records
 the new service definition. This lets OpenRC register the replacement service
 before the script treats it as ready; systems without that script use `k0s
-start`.
+start`. Controller configuration is staged in a temporary local file and its
+cleanup remains safe when the script runs with `set -u`.
