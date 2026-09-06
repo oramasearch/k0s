@@ -26,6 +26,7 @@ import (
 	"github.com/k0sproject/k0s/pkg/component/worker"
 	workerconfig "github.com/k0sproject/k0s/pkg/component/worker/config"
 	"github.com/k0sproject/k0s/pkg/component/worker/containerd"
+	"github.com/k0sproject/k0s/pkg/component/worker/liquidsnapshotter"
 	"github.com/k0sproject/k0s/pkg/component/worker/nllb"
 	"github.com/k0sproject/k0s/pkg/config"
 	"github.com/k0sproject/k0s/pkg/constant"
@@ -267,6 +268,10 @@ func (c *Command) Start(ctx context.Context, nodeName apitypes.NodeName, kubelet
 	certManager := worker.NewCertificateManager(kubeletKubeconfigPath)
 
 	if c.CriSocket == "" {
+		if runtime.GOOS == "linux" && workerConfig.LiquidNodeStore != nil && workerConfig.LiquidNodeStore.Enabled {
+			componentManager.Add(ctx, worker.NewLiquidStore(c.K0sVars))
+			componentManager.Add(ctx, liquidsnapshotter.NewComponent(c.K0sVars))
+		}
 		componentManager.Add(ctx, containerd.NewComponent(c.LogLevels.Containerd, c.K0sVars, workerConfig))
 		componentManager.Add(ctx, worker.NewOCIBundleReconciler(c.K0sVars))
 		componentManager.Add(ctx, containerd.NewDeprecationMonitor(

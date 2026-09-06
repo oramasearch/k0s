@@ -609,6 +609,7 @@ func (r *Reconciler) buildProfile(snapshot *snapshot) *workerconfig.Profile {
 		DualStackEnabled:     snapshot.dualStackEnabled,
 		AutopilotDisabled:    r.autopilotDisabled,
 		PrimaryAddressFamily: r.primaryAddressFamily,
+		LiquidNodeStore:      snapshot.liquidNodeStore.DeepCopy(),
 	}
 
 	if workerProfile.NodeLocalLoadBalancing != nil {

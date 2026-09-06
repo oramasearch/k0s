@@ -24,6 +24,12 @@ const (
 // LiquidSpec contains the liquid-specific cluster configuration.
 type LiquidSpec struct {
 	Components *LiquidComponents `json:"components,omitempty"`
+	NodeStore  *LiquidNodeStore  `json:"nodeStore,omitempty"`
+}
+
+// LiquidNodeStore declares the chunk-aware runtime store on workers.
+type LiquidNodeStore struct {
+	Enabled bool `json:"enabled"`
 }
 
 // LiquidComponents contains every component bundled by liquid.
@@ -58,6 +64,9 @@ type LiquidComponentEntry struct {
 // DefaultLiquidSpec returns the component versions selected for new liquid clusters.
 func DefaultLiquidSpec() *LiquidSpec {
 	return &LiquidSpec{
+		NodeStore: &LiquidNodeStore{
+			Enabled: true,
+		},
 		Components: &LiquidComponents{
 			Cilium: LiquidComponent{
 				Enabled: true,

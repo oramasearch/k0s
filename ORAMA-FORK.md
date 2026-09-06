@@ -74,7 +74,8 @@ Design lives in `oramasearch/liquid`, not here. The integration points are the d
 runtime and the chunk store:
 
 - the node fetching image content as **chunks** it does not already have, across images
-  rather than within one;
+  rather than within one, implemented by the embedded liquid node store and containerd proxy
+  snapshotter documented in `docs/liquid/chunk-aware-node.md`;
 - deploy-on-drip, driven by the drip fan-out rather than by a CI trigger;
 - attestation verification at admission, so what runs is what was attested;
 - microVM isolation for every customer workload on shared workers, with namespaces

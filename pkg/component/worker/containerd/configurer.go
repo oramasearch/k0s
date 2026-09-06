@@ -4,13 +4,78 @@
 package containerd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 
 	"github.com/pelletier/go-toml"
+
+	"github.com/k0sproject/k0s/internal/pkg/file"
 )
+
+const liquidDropInHeader = "# k0s_managed=true\n"
+
+// LiquidDropInPath returns the k0s-managed liquid snapshotter drop-in path.
+func LiquidDropInPath(importsPath string) string {
+	return filepath.Join(importsPath, "liquid.toml")
+}
+
+func reconcileLiquidDropIn(importsPath, socketPath string) error {
+	path := LiquidDropInPath(importsPath)
+	if socketPath == "" {
+		return removeLiquidDropIn(path)
+	}
+
+	data, err := marshalLiquidDropIn(socketPath)
+	if err != nil {
+		return err
+	}
+
+	return file.AtomicWithTarget(path).
+		WithPermissions(0644).
+		Do(func(dst file.AtomicWriter) error {
+			_, err := dst.Write(data)
+			return err
+		})
+}
+
+func removeLiquidDropIn(path string) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !bytes.HasPrefix(data, []byte(liquidDropInHeader)) {
+		return nil
+	}
+	return os.Remove(path)
+}
+
+func marshalLiquidDropIn(socketPath string) ([]byte, error) {
+	data, err := toml.Marshal(map[string]any{
+		"version": 3,
+		"proxy_plugins": map[string]any{
+			"liquid": map[string]any{
+				"type":    "snapshot",
+				"address": socketPath,
+			},
+		},
+		"plugins": map[string]any{
+			"io.containerd.cri.v1.images": map[string]any{
+				"snapshotter": "liquid",
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't marshal liquid containerd drop-in: %w", err)
+	}
+	return append([]byte(liquidDropInHeader), data...), nil
+}
 
 // marshalContainerdConfig returns the TOML bytes for the k0s-managed containerd
 // configuration, with CRI plugin defaults inline and a glob import for user drop-ins.

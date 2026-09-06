@@ -15,6 +15,8 @@ func TestDefaultLiquidComponents(t *testing.T) {
 	config := DefaultClusterConfig()
 	require.NotNil(t, config.Spec.Liquid)
 	require.NotNil(t, config.Spec.Liquid.Components)
+	require.NotNil(t, config.Spec.Liquid.NodeStore)
+	assert.True(t, config.Spec.Liquid.NodeStore.Enabled)
 	assert.Equal(t, "custom", config.Spec.Network.Provider)
 
 	entries := config.Spec.Liquid.Components.Entries()
@@ -77,6 +79,7 @@ spec:
         replacement: managed
 `))
 	require.NoError(t, err)
+	assert.Nil(t, config.Spec.Liquid.NodeStore)
 	assert.Equal(t, "custom", config.Spec.Network.Provider)
 	assert.NoError(t, errors.Join(config.Validate()...))
 }

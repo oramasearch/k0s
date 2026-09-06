@@ -47,6 +47,7 @@ type Component struct {
 	executablePath string
 	confPath       string
 	importsPath    string
+	liquidSocket   string
 
 	stop func() error
 }
@@ -58,6 +59,9 @@ func NewComponent(logLevel string, vars *config.CfgVars, profile *workerconfig.P
 		Profile:     profile,
 		confPath:    defaultConfPath,
 		importsPath: DefaultImportsPath,
+	}
+	if profile.LiquidNodeStore != nil && profile.LiquidNodeStore.Enabled {
+		c.liquidSocket = filepath.Join(vars.RunDir, "liquid-snapshotter.sock")
 	}
 	return c
 }
@@ -177,6 +181,9 @@ func (c *Component) setupConfig() error {
 	}
 	if err := dir.Init(filepath.Dir(c.importsPath), 0755); err != nil {
 		return fmt.Errorf("can't create containerd config imports dir: %w", err)
+	}
+	if err := reconcileLiquidDropIn(c.importsPath, c.liquidSocket); err != nil {
+		return fmt.Errorf("can't reconcile liquid containerd drop-in: %w", err)
 	}
 
 	configData, err := marshalContainerdConfig(c.importsPath, c.Profile.PauseImage.URI())
