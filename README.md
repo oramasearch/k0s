@@ -28,7 +28,7 @@ liquid. Everything below this section is the upstream README, unchanged. What is
 specific to this copy lives in two places:
 
 - [`docs/liquid/README.md`](docs/liquid/README.md) indexes the liquid-specific
-  changes: chunk-aware node images, image admission, declared components,
+  changes: immutable bootc nodes, chunk-aware workload images, image admission, declared components,
   multi-tenancy, the platform surface, the lifecycle runbooks and the upstream sync.
 - [`ORAMA-FORK.md`](ORAMA-FORK.md) records the branch model, the guarded upstream
   sync and the licence obligations.

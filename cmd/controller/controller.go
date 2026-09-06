@@ -37,6 +37,7 @@ import (
 	"github.com/k0sproject/k0s/pkg/component/controller/clusterconfig"
 	"github.com/k0sproject/k0s/pkg/component/controller/cplb"
 	"github.com/k0sproject/k0s/pkg/component/controller/leaderelector"
+	"github.com/k0sproject/k0s/pkg/component/controller/nodeimage"
 	"github.com/k0sproject/k0s/pkg/component/controller/workerconfig"
 	"github.com/k0sproject/k0s/pkg/component/iptables"
 	"github.com/k0sproject/k0s/pkg/component/manager"
@@ -652,6 +653,8 @@ func (c *command) start(ctx context.Context, runtimeConfig *config.RuntimeConfig
 
 	clusterComponents.Add(ctx, controller.NewCRDStack(adminClientFactory, leaderElector, "liquid-admission"))
 	clusterComponents.Add(ctx, controller.NewLiquidAdmission(adminClientFactory, leaderElector, c.K0sVars))
+	clusterComponents.Add(ctx, controller.NewCRDStack(adminClientFactory, leaderElector, "liquid", controller.WithStackName("liquid-node-management")))
+	clusterComponents.Add(ctx, nodeimage.NewComponent(adminClientFactory, leaderElector))
 
 	if telemetry.IsEnabled() {
 		clusterComponents.Add(ctx, &telemetry.Component{

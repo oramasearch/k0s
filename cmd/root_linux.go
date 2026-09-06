@@ -7,6 +7,7 @@ import (
 	"github.com/k0sproject/k0s/cmd/backup"
 	"github.com/k0sproject/k0s/cmd/controller"
 	"github.com/k0sproject/k0s/cmd/keepalived"
+	"github.com/k0sproject/k0s/cmd/nodeconfig"
 	"github.com/k0sproject/k0s/cmd/restore"
 
 	"github.com/spf13/cobra"
@@ -16,5 +17,6 @@ func addPlatformSpecificCommands(root *cobra.Command) {
 	root.AddCommand(backup.NewBackupCmd())
 	root.AddCommand(controller.NewControllerCmd())
 	root.AddCommand(keepalived.NewKeepalivedSetStateCmd()) // hidden
+	root.AddCommand(nodeconfig.NewNodeConfigCmd())
 	root.AddCommand(restore.NewRestoreCmd())
 }

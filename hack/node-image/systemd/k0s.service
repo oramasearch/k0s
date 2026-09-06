@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 k0s authors
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=k0s Kubernetes
+Requires=k0s-node-config.service
+After=network-online.target k0s-node-config.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/k0s-node-launch
+Restart=always
+RestartSec=5
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

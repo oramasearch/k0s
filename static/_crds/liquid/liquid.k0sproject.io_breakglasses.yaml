@@ -1,0 +1,102 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: breakglasses.liquid.k0sproject.io
+spec:
+  group: liquid.k0sproject.io
+  names:
+    kind: BreakGlass
+    listKind: BreakGlassList
+    plural: breakglasses
+    shortNames:
+    - bg
+    singular: breakglass
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.node
+      name: Node
+      type: string
+    - jsonPath: .spec.principal
+      name: Principal
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: BreakGlass requests temporary certificate-only SSH access to
+          one node.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: BreakGlassSpec identifies the node, certificate principal,
+              reason, and lifetime.
+            properties:
+              node:
+                type: string
+              principal:
+                type: string
+              reason:
+                minLength: 1
+                type: string
+              ttlSeconds:
+                format: int32
+                maximum: 3600
+                minimum: 1
+                type: integer
+            required:
+            - node
+            - principal
+            - reason
+            - ttlSeconds
+            type: object
+          status:
+            description: BreakGlassStatus records when the host opened and closed
+              access.
+            properties:
+              closedAt:
+                format: date-time
+                type: string
+              expiresAt:
+                format: date-time
+                type: string
+              message:
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
+              openedAt:
+                format: date-time
+                type: string
+              phase:
+                type: string
+            type: object
+        required:
+        - metadata
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

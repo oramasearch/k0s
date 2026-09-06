@@ -76,6 +76,10 @@ runtime and the chunk store:
 - the node fetching image content as **chunks** it does not already have, across images
   rather than within one, implemented by the embedded liquid node store and containerd proxy
   snapshotter documented in `docs/liquid/chunk-aware-node.md`;
+- immutable bootc node images selected by digest, with signed machine configuration,
+  controller-first image swaps, automatic rollback, and certificate-only audited
+  break-glass access documented in `docs/liquid/node-image.md` and
+  `docs/liquid/break-glass.md`;
 - deploy-on-drip, driven by the drip fan-out rather than by a CI trigger;
 - attestation verification at admission, so what runs is what was attested;
 - microVM isolation for every customer workload on shared workers, with namespaces

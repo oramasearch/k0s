@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 k0s authors
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=k0s immutable-node agent
+After=k0s.service
+Requires=k0s.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/k0s/node-config.env
+ExecStart=/usr/local/bin/k0s liquid node-agent --node-name=%H --kubeconfig=${K0S_NODE_AGENT_KUBECONFIG}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
