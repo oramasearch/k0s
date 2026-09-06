@@ -16,7 +16,7 @@ on each managed Linux worker, and registers them through a k0s-managed container
 [chunk-aware node guide](chunk-aware-node.md) for its image contract, paths, metrics, and fallback
 behavior. Existing configurations without `spec.liquid` remain unchanged during an upgrade.
 
-The host operating system is managed separately from these Kubernetes components.
+The host operating system has a separate lifecycle from these Kubernetes components.
 Digest-pinned bootc deployments, signed first-boot configuration, and rollback are
 documented in [Immutable node images](node-image.md). Temporary host access is covered
 by [Break-glass node access](break-glass.md).
