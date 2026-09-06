@@ -13,7 +13,7 @@ DOCKER ?= docker
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --pretty=%ct || date -u +%s)
 
 bindir = staging/${TARGET_OS}/bin
-posix_bins = runc kubelet containerd containerd-shim-runc-v2 kube-apiserver kube-scheduler kube-controller-manager etcd kine konnectivity-server xtables-legacy-multi xtables-nft-multi keepalived
+posix_bins = runc kubelet containerd containerd-shim-runc-v2 kube-apiserver kube-scheduler kube-controller-manager etcd kine konnectivity-server liquid xtables-legacy-multi xtables-nft-multi keepalived
 windows_bins = kubelet.exe containerd.exe containerd-shim-runhcs-v1.exe
 
 ifeq ($(TARGET_OS),windows)
@@ -58,6 +58,7 @@ $(bindir)/containerd $(bindir)/containerd-shim-runc-v2: .container.containerd
 $(bindir)/etcd: .container.etcd
 $(bindir)/kine: .container.kine
 $(bindir)/konnectivity-server: .container.konnectivity
+$(bindir)/liquid: .container.liquid
 $(bindir)/kubelet $(bindir)/kube-apiserver $(bindir)/kube-scheduler $(bindir)/kube-controller-manager: .container.kubernetes
 $(bindir)/xtables-legacy-multi: .container.iptables
 $(bindir)/xtables-nft-multi: .container.iptables
@@ -107,6 +108,8 @@ build_docker_image = \
 
 .docker-image.%.stamp: %/Dockerfile Makefile.variables
 	$(build_docker_image)
+
+.docker-image.liquid.stamp: liquid/src
 
 .docker-image.%.windows.stamp: %/Dockerfile Makefile.variables
 	$(build_docker_image)

@@ -1,0 +1,3 @@
+[submodule "embedded-bins/liquid/src"]
+	path = embedded-bins/liquid/src
+	url = git@github.com:oramasearch/liquid.git

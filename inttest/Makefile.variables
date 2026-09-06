@@ -60,6 +60,7 @@ smoketests := \
 	check-kine \
 	check-kubectl \
 	check-liquid-components \
+	check-liquid-nodestore \
 	check-liquid-tenancy \
 	check-liquid-lifecycle \
 	check-kubeletcertrotate \

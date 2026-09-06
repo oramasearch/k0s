@@ -337,6 +337,9 @@ func TestReconciler_ResourceGeneration(t *testing.T) {
 
 	require.NoError(t, underTest.Reconcile(t.Context(), &v1beta1.ClusterConfig{
 		Spec: &v1beta1.ClusterSpec{
+			Liquid: &v1beta1.LiquidSpec{
+				NodeStore: &v1beta1.LiquidNodeStore{Enabled: true},
+			},
 			FeatureGates: v1beta1.FeatureGates{
 				v1beta1.FeatureGate{
 					Name:       "kubelet-feature",
@@ -746,6 +749,11 @@ func requireWorkerProfile(t *testing.T, resources []*unstructured.Unstructured, 
 			return resource.GetKind() == "ConfigMap" && resource.GetName() == name
 		},
 	)
+
+	nodeStore, ok, err := unstructured.NestedString(configMap.Object, "data", "liquidNodeStore")
+	require.NoError(t, err)
+	require.True(t, ok, "No data.liquidNodeStore field")
+	require.JSONEq(t, `{"enabled":true}`, nodeStore)
 
 	pauseImage, ok, err := unstructured.NestedString(configMap.Object, "data", "pauseImage")
 	require.NoError(t, err)

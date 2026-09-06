@@ -654,6 +654,15 @@ spec:
                     - gatewayAPI
                     - localPath
                     type: object
+                  nodeStore:
+                    description: LiquidNodeStore declares the chunk-aware runtime
+                      store on workers.
+                    properties:
+                      enabled:
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
                 type: object
               metricsServer:
                 description: |-

@@ -29,6 +29,7 @@ type Profile struct {
 	DualStackEnabled       bool
 	AutopilotDisabled      bool
 	PrimaryAddressFamily   v1beta1.PrimaryAddressFamilyType
+	LiquidNodeStore        *v1beta1.LiquidNodeStore
 }
 
 func (p *Profile) DeepCopy() *Profile {
@@ -51,6 +52,11 @@ func (p *Profile) DeepCopyInto(out *Profile) {
 		in, out := &p.NodeLocalLoadBalancing, &out.NodeLocalLoadBalancing
 		*out = new(v1beta1.NodeLocalLoadBalancing)
 		(*in).DeepCopyInto(*out)
+	}
+	if p.LiquidNodeStore != nil {
+		in, out := &p.LiquidNodeStore, &out.LiquidNodeStore
+		*out = new(v1beta1.LiquidNodeStore)
+		**out = **in
 	}
 }
 
@@ -147,6 +153,7 @@ func forEachConfigMapEntry(profile *Profile, f func(fieldName string, ptr any)) 
 		"dualStackEnabled":       &profile.DualStackEnabled,
 		"autopilotDisabled":      &profile.AutopilotDisabled,
 		"primaryAddressFamily":   &profile.PrimaryAddressFamily,
+		"liquidNodeStore":        &profile.LiquidNodeStore,
 	} {
 		f(fieldName, ptr)
 	}

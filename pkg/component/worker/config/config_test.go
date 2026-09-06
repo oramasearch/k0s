@@ -78,6 +78,17 @@ var roundtripTests = []roundtripTest{
 		&Profile{Konnectivity: Konnectivity{AgentPort: 1337}},
 		map[string]string{"konnectivity": `{"agentPort":1337}`}},
 	{
+		"liquid_node_store",
+		&Profile{
+			Konnectivity:    Konnectivity{AgentPort: 1337},
+			LiquidNodeStore: &v1beta1.LiquidNodeStore{Enabled: true},
+		},
+		map[string]string{
+			"konnectivity":    `{"agentPort":1337}`,
+			"liquidNodeStore": `{"enabled":true}`,
+		},
+	},
+	{
 		"empty_servers",
 		&Profile{
 			APIServerAddresses: []net.HostPort{},
