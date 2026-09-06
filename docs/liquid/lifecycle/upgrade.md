@@ -11,7 +11,9 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 from the selected controller, and waits for `Completed`. It discovers the
 controller and worker targets from the lifecycle inventory. Autopilot updates
 controllers one at a time with readiness and quorum checks, then updates
-workers at the configured concurrency (one by default).
+workers at the configured concurrency (one by default). While a controller is
+being updated, the script reads plan status from another configured controller
+when one is available.
 
 For a released binary, the script derives the k0s release URL from `<version>`.
 Set `K0S_LIFECYCLE_BINARY_URL` for a private build, or set

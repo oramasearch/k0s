@@ -44,20 +44,30 @@ binary_url_for_platform() {
 }
 
 plan_state() {
-  local controller="$1"
+  local controller
+  local state
 
-  lifecycle_k0s_timed "$controller" kc get plan autopilot -o jsonpath='{.status.state}' 2>/dev/null || true
+  for controller in "$@"; do
+    if ! state="$(lifecycle_k0s_timed "$controller" kc get plan autopilot -o jsonpath='{.status.state}' 2>/dev/null)"; then
+      continue
+    fi
+    printf '%s\n' "$state"
+    return 0
+  done
+  return 1
 }
 
 wait_for_plan() {
-  local controller="$1"
+  local controller
   local state
 
-  state="$(plan_state "$controller")"
+  state="$(plan_state "$@" || true)"
   case "$state" in
     Completed) return 0 ;;
     ApplyFailed|IncompleteTargets|Restricted|Warning)
-      lifecycle_k0s "$controller" kc get plan autopilot -o yaml >&2 || true
+      for controller in "$@"; do
+        lifecycle_k0s_timed "$controller" kc get plan autopilot -o yaml >&2 && break
+      done
       lifecycle_die "autopilot plan finished in $state"
       ;;
     *) return 1 ;;
@@ -80,7 +90,7 @@ main() {
   lifecycle_ssh_args
   controller="$(lifecycle_primary_controller)"
 
-  state="$(plan_state "$controller")"
+  state="$(plan_state "${lifecycle_controllers[@]}" || true)"
   case "$state" in
     "") ;;
     Completed)
@@ -136,7 +146,7 @@ main() {
   } >"$plan"
 
   lifecycle_k0s_pipe "$controller" kc apply -f - <"$plan"
-  lifecycle_wait_for "the autopilot plan" wait_for_plan "$controller"
+  lifecycle_wait_for "the autopilot plan" wait_for_plan "${lifecycle_controllers[@]}"
   lifecycle_k0s "$controller" kc get plan autopilot -o yaml
 }
 
