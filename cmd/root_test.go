@@ -65,6 +65,7 @@ func TestUnknownSubCommandsAreRejected(t *testing.T) {
 	commandsWithArguments := []string{
 		"airgap bundle-artifacts",
 		"kubeconfig create",
+		"liquid logs",
 		"liquid tenant-profile",
 		"token invalidate",
 		"worker",

@@ -125,4 +125,5 @@ runs Pebble v2.10.1 as the ACME double and Loki v3.7.7 as the customer log endpo
 certificate through the Gateway API HTTP-01 solver, reaches an application `HTTPRoute` over TLS, reads
 the application's startup line through Vector and `k0s liquid logs`, and verifies that a Pod mounting a
 manually created Secret is refused in an environment namespace. The target is part of the smoketest
-list.
+list. The unit suite covers the log query, in-cluster Service proxy, response formatting, and command
+routing.
