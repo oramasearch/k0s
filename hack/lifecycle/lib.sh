@@ -160,11 +160,18 @@ lifecycle_ssh_pipe() {
 
 lifecycle_ssh_run_timed() {
   local timeout="$1"
+  local node
+  local target
+  local command
   local process
   local elapsed=0
 
   shift
-  lifecycle_ssh_run "$@" &
+  node="$1"
+  shift
+  target="$(lifecycle_target_for "$node")"
+  command="$(lifecycle_remote_command "$@")"
+  "${lifecycle_ssh[@]}" "$target" "$command" &
   process=$!
   while kill -0 "$process" 2>/dev/null; do
     if [ "$elapsed" -ge "$timeout" ]; then
