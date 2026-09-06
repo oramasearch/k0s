@@ -39,6 +39,20 @@ prepare_replacement_host() {
   lifecycle_ssh_run "$node" "$lifecycle_k0s" reset || true
 }
 
+start_replacement_service() {
+  local node="$1"
+  local role
+  local service
+
+  role="$(lifecycle_role_for "$node")"
+  service="k0s${role}"
+  if lifecycle_ssh_run "$node" test -x "/etc/init.d/$service"; then
+    lifecycle_ssh_run "$node" "/etc/init.d/$service" start
+    return
+  fi
+  lifecycle_k0s "$node" start
+}
+
 wait_for_worker() {
   local controller="$1"
   local worker="$2"
@@ -85,7 +99,8 @@ main() {
       token="$(lifecycle_k0s "$operator" token create --role worker --expiry="${K0S_LIFECYCLE_TOKEN_EXPIRY:-1h}")"
       printf '%s' "$token" | lifecycle_ssh_pipe "$node" install -m 0600 /dev/stdin /tmp/k0s-worker.token
       lifecycle_worker_args
-      lifecycle_install "$node" worker --force --start --token-file=/tmp/k0s-worker.token
+      lifecycle_install "$node" worker --force --token-file=/tmp/k0s-worker.token
+      lifecycle_wait_for "replacement service on $node" start_replacement_service "$node"
       lifecycle_wait_for "worker $node" wait_for_worker "$operator" "$node"
       ;;
     controller)
@@ -102,7 +117,8 @@ main() {
       token="$(lifecycle_k0s "$operator" token create --role controller --expiry="${K0S_LIFECYCLE_TOKEN_EXPIRY:-1h}")"
       printf '%s' "$token" | lifecycle_ssh_pipe "$node" install -m 0600 /dev/stdin /tmp/k0s-controller.token
       lifecycle_controller_args
-      lifecycle_install "$node" controller --force --start --config=/etc/k0s/k0s.yaml --token-file=/tmp/k0s-controller.token
+      lifecycle_install "$node" controller --force --config=/etc/k0s/k0s.yaml --token-file=/tmp/k0s-controller.token
+      lifecycle_wait_for "replacement service on $node" start_replacement_service "$node"
       lifecycle_wait_for_api "$node"
       lifecycle_wait_for "etcd member $node" wait_for_controller_member "$operator" "$node"
       ;;
