@@ -6,10 +6,14 @@ package static
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
+	"strconv"
 	"text/template"
+
+	"github.com/k0sproject/k0s/pkg/apis/k0s/v1beta1"
 
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -38,6 +42,9 @@ var (
 
 	//go:embed manifests/liquid/tenant-namespace/untrusted-runtime-class.yaml
 	untrustedRuntimeClassSource string
+
+	//go:embed manifests/liquid/platform/platform.yaml
+	liquidPlatformSource string
 )
 
 // RenderTenantNamespaceProfile renders the liquid namespace baseline for name.
@@ -61,6 +68,36 @@ func RenderTenantNamespaceProfile(name string) ([]byte, error) {
 // UntrustedRuntimeClass returns the liquid Kata RuntimeClass declaration.
 func UntrustedRuntimeClass() []byte {
 	return []byte(untrustedRuntimeClassSource)
+}
+
+// RenderLiquidPlatform renders the cluster-wide liquid platform resources.
+func RenderLiquidPlatform(platform *v1beta1.LiquidPlatform) ([]byte, error) {
+	if platform == nil {
+		return nil, errors.New("liquid platform configuration is required")
+	}
+	if errs := platform.Validate(); len(errs) != 0 {
+		return nil, errors.Join(errs...)
+	}
+
+	manifest, err := template.New("liquid-platform").Parse(liquidPlatformSource)
+	if err != nil {
+		return nil, fmt.Errorf("parse liquid platform manifest: %w", err)
+	}
+
+	data := struct {
+		ACMEDirectory string
+	}{
+		ACMEDirectory: strconv.Quote(platform.ACMEDirectory),
+	}
+	if platform.ACMEDirectory == "" {
+		data.ACMEDirectory = ""
+	}
+
+	var rendered bytes.Buffer
+	if err := manifest.Execute(&rendered, data); err != nil {
+		return nil, fmt.Errorf("render liquid platform manifest: %w", err)
+	}
+	return rendered.Bytes(), nil
 }
 
 func subFS(f fs.FS, segments ...string) fs.FS {

@@ -36,12 +36,14 @@ func TestComponentRows(t *testing.T) {
 	}
 
 	rows := componentRows(liquid, charts)
-	require.Len(t, rows, 4)
+	require.Len(t, rows, 6)
 	assert.Equal(t, "deployed", rows[0].status)
 	assert.Equal(t, "external", rows[1].status)
-	assert.Equal(t, "disabled", rows[2].status)
-	assert.Equal(t, "reconciling", rows[3].status)
-	assert.Equal(t, "1.12.0", rows[3].deployed)
+	assert.Equal(t, "pending", rows[2].status)
+	assert.Equal(t, "pending", rows[3].status)
+	assert.Equal(t, "disabled", rows[4].status)
+	assert.Equal(t, "reconciling", rows[5].status)
+	assert.Equal(t, "1.12.0", rows[5].deployed)
 }
 
 func TestPrintComponentRows(t *testing.T) {

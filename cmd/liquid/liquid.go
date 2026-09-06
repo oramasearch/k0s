@@ -20,6 +20,7 @@ func NewLiquidCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newComponentsCmd())
+	cmd.AddCommand(newLogsCmd())
 	cmd.AddCommand(newTenantProfileCmd())
 	cmd.AddCommand(newUntrustedRuntimeClassCmd())
 	return cmd

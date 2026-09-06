@@ -29,6 +29,16 @@ var componentDocumentationByName = map[string]componentDocumentation{
 		replacement: "Install compatible Gateway API CRDs, then set `replacement: external`.",
 		breakage:    "Removing or downgrading CRDs can make Gateway API objects invalid or unavailable to Cilium.",
 	},
+	v1beta1.LiquidComponentCertManager: {
+		upgrade:     "Change `spec.liquid.components.certManager.version` after checking its Kubernetes and Gateway API compatibility.",
+		replacement: "Install a compatible certificate controller, then set `replacement: external`.",
+		breakage:    "Certificate issuance and renewal stop when no compatible replacement reconciles the existing Certificate resources.",
+	},
+	v1beta1.LiquidComponentLogShipper: {
+		upgrade:     "Change `spec.liquid.components.logShipper.version` after validating the Loki sink configuration.",
+		replacement: "Install another node log collector that preserves the documented Loki labels, then set `replacement: external`.",
+		breakage:    "Environment log reads become empty when the replacement does not publish namespace, pod, and container labels.",
+	},
 	v1beta1.LiquidComponentLocalPath: {
 		upgrade:     "Change `spec.liquid.components.localPath.version`.",
 		replacement: "Install another local provisioner, migrate claims, then set `replacement: external`.",
@@ -64,7 +74,7 @@ func renderComponentsPage() (string, error) {
 	page.WriteString("SPDX-License-Identifier: CC-BY-SA-4.0\n")
 	page.WriteString("-->\n\n")
 	page.WriteString("# Liquid components\n\n")
-	page.WriteString("New liquid clusters declare four replaceable components in `spec.liquid.components`. ")
+	fmt.Fprintf(&page, "New liquid clusters declare %d replaceable components in `spec.liquid.components`. ", len(components.Entries()))
 	page.WriteString("The declarations persist in the cluster configuration, so upgrading the k0s binary does not select new component versions.\n\n")
 	page.WriteString("The worker runtime is declared separately at `spec.liquid.nodeStore.enabled`. It is not a Helm\n")
 	page.WriteString("component: k0s embeds the pinned liquid executable, starts one node store and one proxy snapshotter\n")
@@ -94,7 +104,7 @@ func renderComponentsPage() (string, error) {
 	page.WriteString("\n## Version changes\n\n")
 	page.WriteString("Edit the component's `version` in the `ClusterConfig` named `k0s` in `kube-system`. ")
 	page.WriteString("The extensions controller updates only that component's `Chart` resource. ")
-	page.WriteString("Managed objects are named `liquid-cilium`, `liquid-gateway-api`, `liquid-local-path`, and `liquid-distributed-storage` in `kube-system`. ")
+	page.WriteString("Managed Chart objects use the `liquid-<component>` names shown by `k0s liquid components` and live in `kube-system`. ")
 	page.WriteString("Wait for `k0s liquid components` to show the same declared and deployed versions before continuing. ")
 	page.WriteString("Keep the previous declaration available for rollback and follow the component's own version-skew and data-migration guidance.\n\n")
 	page.WriteString("Defaults are creation-time input. `k0s config create` emits all declarations, and the first controller persists them. ")
@@ -108,6 +118,8 @@ func renderComponentsPage() (string, error) {
 	page.WriteString("The Gateway API project does not yet publish a CRD Helm chart, so the default uses Wiremind's verified packaging of the upstream CRDs. ")
 	page.WriteString("Rancher's local-path provisioner also lacks a project-operated chart repository, so the default uses Containeroo's verified packaging. ")
 	page.WriteString("Both sources are explicit in the configuration and can be replaced.\n\n")
+	page.WriteString("cert-manager installs its CRDs and enables the Gateway API HTTP-01 solver. Vector runs as an agent on every worker, reads Kubernetes pod logs, and writes Loki streams labeled `namespace`, `pod`, and `container` to `spec.liquid.platform.logsEndpoint`. The default endpoint is the stable in-cluster service `http://loki.liquid-system.svc.cluster.local:3100`; the Lake deployment or customer log service owns that Service. Changing the endpoint updates only the Vector Chart values.\n\n")
+	page.WriteString("The controller also writes the `liquid` GatewayClass and `liquid-system/liquid` Gateway. When `spec.liquid.platform.acmeDirectory` is set, it writes the `lake-acme` ClusterIssuer with a Gateway API HTTP-01 solver against that Gateway. See the [platform surface](platform-surface.md) for resource names and contracts.\n\n")
 	page.WriteString("Longhorn requires iSCSI initiator packages and services on every storage node. ")
 	page.WriteString("The local-path class is the default; Longhorn remains opt-in per claim unless the operator changes the chart values.\n\n")
 	page.WriteString("The bootloose integration test starts a dynamically configured controller and joins two workers. It prepares Cilium's bpffs, cgroup v2, and network-namespace mounts and Longhorn's shared data path; its image enables `iscsid` so the default Longhorn release is exercised with the same host prerequisite.\n")

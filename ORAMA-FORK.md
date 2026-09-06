@@ -82,6 +82,8 @@ runtime and the chunk store:
   reserved for environments belonging to one trusting customer;
 - declared Cilium, Gateway API, local-path, and Longhorn components whose versions and
   external replacement paths remain under cluster-configuration control.
+- a default Cilium Gateway, cert-manager ACME issuer template, Vector-to-Loki log path,
+  and environment admission policy for the Lake platform actions.
 - lifecycle runbooks and SSH automation for upgrades, recovery, node replacement,
   certificate rotation, and metrics for those declared components.
 

@@ -63,6 +63,7 @@ smoketests := \
 	check-liquid-nodestore \
 	check-liquid-tenancy \
 	check-liquid-lifecycle \
+	check-liquid-platform \
 	check-kubeletcertrotate \
 	check-kuberouter \
 	check-kuberouter-ipv6 \

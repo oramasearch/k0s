@@ -507,6 +507,8 @@ func (c *command) start(ctx context.Context, runtimeConfig *config.RuntimeConfig
 		))
 	}
 
+	clusterComponents.Add(ctx, controller.NewLiquidPlatform(c.K0sVars.ManifestsDir))
+
 	if enableK0sEndpointReconciler {
 		clusterComponents.Add(ctx, controller.NewEndpointReconciler(
 			nodeConfig,

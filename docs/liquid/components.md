@@ -5,7 +5,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Liquid components
 
-New liquid clusters declare four replaceable components in `spec.liquid.components`. The declarations persist in the cluster configuration, so upgrading the k0s binary does not select new component versions.
+New liquid clusters declare 6 replaceable components in `spec.liquid.components`. The declarations persist in the cluster configuration, so upgrading the k0s binary does not select new component versions.
 
 The worker runtime is declared separately at `spec.liquid.nodeStore.enabled`. It is not a Helm
 component: k0s embeds the pinned liquid executable, starts one node store and one proxy snapshotter
@@ -19,12 +19,14 @@ behavior. Existing configurations without `spec.liquid` remain unchanged during 
 |---|---:|---|---|---|---|
 | `cilium` | `1.20.1` | [cilium](https://helm.cilium.io) | Change `spec.liquid.components.cilium.version`. | Install another CNI, then set `replacement: external`. | Replacing it without a compatible CNI interrupts pod networking and removes liquid's Gateway API implementation. |
 | `gatewayAPI` | `1.6.0` | [gateway-api-crds](https://wiremind.github.io/wiremind-helm-charts) | Change `spec.liquid.components.gatewayAPI.version`. | Install compatible Gateway API CRDs, then set `replacement: external`. | Removing or downgrading CRDs can make Gateway API objects invalid or unavailable to Cilium. |
+| `certManager` | `v1.21.1` | [cert-manager](https://charts.jetstack.io) | Change `spec.liquid.components.certManager.version` after checking its Kubernetes and Gateway API compatibility. | Install a compatible certificate controller, then set `replacement: external`. | Certificate issuance and renewal stop when no compatible replacement reconciles the existing Certificate resources. |
+| `logShipper` | `0.58.0` | [vector](https://helm.vector.dev) | Change `spec.liquid.components.logShipper.version` after validating the Loki sink configuration. | Install another node log collector that preserves the documented Loki labels, then set `replacement: external`. | Environment log reads become empty when the replacement does not publish namespace, pod, and container labels. |
 | `localPath` | `0.0.38` | [local-path-provisioner](https://charts.containeroo.ch) | Change `spec.liquid.components.localPath.version`. | Install another local provisioner, migrate claims, then set `replacement: external`. | Existing volumes remain tied to their nodes and are not migrated automatically. |
 | `distributedStorage` | `1.12.1` | [longhorn](https://charts.longhorn.io) | Follow the Longhorn compatibility notes, then change `spec.liquid.components.distributedStorage.version`. | Migrate volumes to an external CSI provider; Rook-Ceph is the documented path for larger estates. | Replacing it without migrating volumes makes Longhorn-backed claims, snapshots, and backups unavailable. |
 
 ## Version changes
 
-Edit the component's `version` in the `ClusterConfig` named `k0s` in `kube-system`. The extensions controller updates only that component's `Chart` resource. Managed objects are named `liquid-cilium`, `liquid-gateway-api`, `liquid-local-path`, and `liquid-distributed-storage` in `kube-system`. Wait for `k0s liquid components` to show the same declared and deployed versions before continuing. Keep the previous declaration available for rollback and follow the component's own version-skew and data-migration guidance.
+Edit the component's `version` in the `ClusterConfig` named `k0s` in `kube-system`. The extensions controller updates only that component's `Chart` resource. Managed Chart objects use the `liquid-<component>` names shown by `k0s liquid components` and live in `kube-system`. Wait for `k0s liquid components` to show the same declared and deployed versions before continuing. Keep the previous declaration available for rollback and follow the component's own version-skew and data-migration guidance.
 
 Defaults are creation-time input. `k0s config create` emits all declarations, and the first controller persists them. Reading an older configuration that has no `spec.liquid` does not add components. A later k0s binary therefore cannot replace a stored component version with its newer compiled default.
 
@@ -33,6 +35,10 @@ Defaults are creation-time input. `k0s config create` emits all declarations, an
 Set `replacement: external` only after the replacement is installed and its workloads are healthy. k0s then creates no `Chart`, stops managing a previously managed release without uninstalling it, and does not remove external resources. Setting `enabled: false` on a managed component is different: k0s removes its managed `Chart` and uninstalls that release.
 
 Cilium is the Gateway API controller; the `gatewayAPI` component supplies CRDs only. The Gateway API project does not yet publish a CRD Helm chart, so the default uses Wiremind's verified packaging of the upstream CRDs. Rancher's local-path provisioner also lacks a project-operated chart repository, so the default uses Containeroo's verified packaging. Both sources are explicit in the configuration and can be replaced.
+
+cert-manager installs its CRDs and enables the Gateway API HTTP-01 solver. Vector runs as an agent on every worker, reads Kubernetes pod logs, and writes Loki streams labeled `namespace`, `pod`, and `container` to `spec.liquid.platform.logsEndpoint`. The default endpoint is the stable in-cluster service `http://loki.liquid-system.svc.cluster.local:3100`; the Lake deployment or customer log service owns that Service. Changing the endpoint updates only the Vector Chart values.
+
+The controller also writes the `liquid` GatewayClass and `liquid-system/liquid` Gateway. When `spec.liquid.platform.acmeDirectory` is set, it writes the `lake-acme` ClusterIssuer with a Gateway API HTTP-01 solver against that Gateway. See the [platform surface](platform-surface.md) for resource names and contracts.
 
 Longhorn requires iSCSI initiator packages and services on every storage node. The local-path class is the default; Longhorn remains opt-in per claim unless the operator changes the chart values.
 
