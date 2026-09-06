@@ -56,3 +56,5 @@ script stops a detected OpenRC `k0sworker` or `k0scontroller` service before
 using that configured k0s path for the stop and reset operations. This prevents
 the service supervisor from restarting k0s during replacement on bootloose
 nodes while leaving systemd and direct k0s installations on their usual path.
+The OpenRC test is run by `sh -ceu` on the remote host so its conditional
+command is parsed there.

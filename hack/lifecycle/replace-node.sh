@@ -34,7 +34,7 @@ prepare_replacement_host() {
   role="$(lifecycle_role_for "$node")"
   service="k0s${role}"
 
-  lifecycle_ssh_run "$node" "if [ -x /etc/init.d/$service ]; then /etc/init.d/$service stop || true; fi"
+  lifecycle_ssh_run "$node" sh -ceu "if [ -x /etc/init.d/$service ]; then /etc/init.d/$service stop || true; fi"
   lifecycle_ssh_run "$node" "$lifecycle_k0s" stop || true
   lifecycle_ssh_run "$node" "$lifecycle_k0s" reset || true
 }
