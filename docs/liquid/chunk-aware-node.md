@@ -44,7 +44,9 @@ liquid node-store serve \
 ```
 
 The embedded liquid source is pinned to commit
-`ba12a564c997208da5ace034b4d905e416525a42`, the merge commit that added the runtime node store.
+`ef2389cc3393e9ba28a43e68a2eb8cfdfb5a5809`, which includes admission transparency-log
+verification. The node-store runtime was added by commit
+`ba12a564c997208da5ace034b4d905e416525a42`.
 The source is a submodule under `embedded-bins/liquid/src`, and the resulting Linux executable is
 included in the k0s payload. A worker image must provide `/dev/fuse` and libfuse3 as described by
 liquid and by k0s issue 16.
