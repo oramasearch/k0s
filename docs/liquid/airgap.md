@@ -84,19 +84,70 @@ what must be validated with public egress denied.
 
 ## Chart transfer
 
-An OCI image bundle does not contain Helm chart archives. Transfer all six default
-component archives, including Gateway API's CRDs, and their packaged dependencies.
-Serve them from an internal HTTPS Helm repository reachable by every controller
-before k0s starts. Set every enabled, managed component's `chart.repository` to
-that internal URL in the installation configuration. The extensions controller
-uses those declared repositories for installation, reconciliation and upgrades.
-Disabled and external declarations create no repository download requirement.
+An OCI image bundle does not contain Helm chart archives. On the connected staging
+host, export every enabled managed chart and generate the installation configuration:
 
-The internal repository, DNS and its trusted TLS certificate must be available
-independently of the cluster being installed. Retain the original archives and
-any included licences and notices. Record chart and image-bundle checksums with
-the exact binary and configuration. Transfer the application's additional charts,
-images and manifests separately.
+```sh
+set -eu
+k0s config create > connected.yaml
+# Apply the intended component versions and values to connected.yaml first.
+k0s airgap export-charts \
+  --config=connected.yaml \
+  --platform=linux/amd64 \
+  --output=liquid-charts \
+  --repository=https://charts.internal.example/liquid \
+  > offline.yaml
+k0s airgap list-images \
+  --config=offline.yaml \
+  --chart-dir=liquid-charts \
+  --platform=linux/amd64 \
+  --all > distribution-images.txt
+```
+
+`export-charts` requires a new output directory. It writes the original chart
+archives, `index.yaml` with relative internal archive URLs, and `charts.lock.json`
+with each component's original repository, version, archive SHA-256 and image
+inventory. Its standard output is the full cluster configuration with all enabled
+managed component repositories redirected to `--repository`. The input configuration
+is unchanged. It also accepts `--chart-dir` when the exact archives are already
+available locally. The default export includes all six archives; Gateway API's
+record has an empty image list.
+
+Publish the contents of `liquid-charts` at the internal HTTPS URL. This repository,
+its DNS and its trusted TLS certificate must be reachable by every controller
+before k0s starts, independently of the cluster being installed. Keep `offline.yaml`
+as the installation and persisted cluster configuration, including across upgrades;
+starting with the original `connected.yaml` would still select public repositories.
+The extensions controller uses the redirected declarations during reconciliation.
+Disabled and external components create no repository download requirement and
+keep their existing declarations unchanged in the output configuration.
+
+Append the operator, Lake, CloudNativePG, external replacements and other workload
+images to `distribution-images.txt`. Use the existing OCI bundler on the staging
+host, with registry credentials already available there:
+
+```sh
+k0s airgap bundle-artifacts \
+  --concurrency=1 \
+  --platform=linux/amd64 \
+  --output=image-bundle.tar \
+  < distribution-images.txt
+```
+
+Transfer the exact k0s binary, `offline.yaml`, chart directory and checksums,
+`image-bundle.tar`, and the applications' additional local charts and manifests.
+Retain the original chart archives and any included licences and notices. Record
+chart and image-bundle checksums with the binary and configuration. Before starting
+k0s, place the image bundle in `/var/lib/k0s/images/` on each node (or the configured
+data directory's `images/` subdirectory), make the internal chart repository
+available, and install the controller using `offline.yaml`. The imported image
+references must match the chart values; an internal image-registry rewrite requires
+rerendering and preparing the corresponding references.
+
+The [operator install procedure](https://github.com/oramasearch/orama-operator/blob/main/docs/install/k0s.md)
+adds application artifacts to this distribution inventory. Its operator and
+CloudNativePG charts are additional transfers; they do not replace the six liquid
+component archives.
 
 ## Verification
 
@@ -111,6 +162,9 @@ check enumerates every `LiquidComponents` field, loads all declared archives,
 compares independently read rendered image lines with the inventory and records
 Gateway API as a chart with no images. Separate assertions cover controller-created
 ancillary images and hook, init-container, value, version and architecture cases.
+Export tests check all six internal chart index entries, archive checksums and an
+offline inventory round trip. The command
+and controller tests verify the redirected configuration and repository selection.
 The tests fetch pinned archives once; set `K0S_AIRGAP_CHART_DIR` to an existing
 archive directory to run them without public access.
 

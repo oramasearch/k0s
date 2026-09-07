@@ -63,4 +63,5 @@ declared versions and values. The list includes init containers, hooks and
 controller-created ancillary images; Gateway API contributes a CRD chart and no
 images. Disabled components and external replacements are excluded. See
 [Air-gapped liquid inventory](airgap.md) for platform selection, exact archive
-inputs, chart transfer and internal repository configuration.
+inputs and `k0s airgap export-charts`, which exports archives and prints
+configuration for an internal HTTPS chart repository before disconnected startup.

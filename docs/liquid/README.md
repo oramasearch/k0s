@@ -20,7 +20,7 @@ remains unchanged unless an upstream behavior itself changes.
 - [Declared components](components.md) covers pinned versions, upgrades, and external
   replacements for the opinionated runtime defaults.
 - [Air-gapped inventory](airgap.md) covers exact component chart rendering, images,
-  architecture selection and disconnected chart transfer.
+  architecture selection and chart export to an internal repository.
 - [Multi-tenancy](multi-tenancy.md) records the customer isolation model and the
   namespace and microVM runtime declarations.
 - [Platform surface](platform-surface.md) defines deploy, logs, environment values,

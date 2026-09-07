@@ -39,6 +39,7 @@ the current configuration, use the following command:
 
 	log := logrus.StandardLogger()
 	cmd.AddCommand(newAirgapListImagesCmd())
+	cmd.AddCommand(newAirgapExportChartsCmd())
 	cmd.AddCommand(newAirgapBundleArtifactsCmd(log, nil))
 
 	return cmd
