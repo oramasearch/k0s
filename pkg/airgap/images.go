@@ -5,6 +5,8 @@ package airgap
 
 import (
 	"cmp"
+	"context"
+	"fmt"
 
 	"github.com/k0sproject/k0s/pkg/apis/k0s/v1beta1"
 
@@ -20,12 +22,34 @@ type TargetEnv struct {
 	// The cluster configuration to select images from. Note that this must be
 	// properly defaulted.
 	Spec *v1beta1.ClusterSpec
+
+	// ChartDir supplies exact liquid chart archives without network access.
+	ChartDir string
+
+	// Context cancels chart downloads. A nil context uses context.Background().
+	Context context.Context
 }
 
 // GetImageURIs returns the image URIs that match the given env. If all is
-// specified, all images will be included in the returned list, no matter if
-// they're used in the current environment's configuration or not.
-func GetImageURIs(env TargetEnv, all bool) (uris []string) {
+// specified, optional base images are included. Liquid components always follow
+// their enabled/replacement declarations and render their exact charts and values.
+// A failed chart lookup or render returns an error and no partial inventory.
+func GetImageURIs(env TargetEnv, all bool) ([]string, error) {
+	if env.Spec == nil {
+		return nil, fmt.Errorf("cluster spec is required")
+	}
+	components, err := liquidImageInventory(env)
+	if err != nil {
+		return nil, err
+	}
+	uris := getBaseImageURIs(env, all)
+	for _, component := range components {
+		uris = append(uris, component.images...)
+	}
+	return uniqueImages(uris), nil
+}
+
+func getBaseImageURIs(env TargetEnv, all bool) (uris []string) {
 	// Add base images
 	switch env.Platform.OS {
 	case "linux":
@@ -51,7 +75,7 @@ func GetImageURIs(env TargetEnv, all bool) (uris []string) {
 		)
 	}
 
-	if all || env.wantsNetworkProvider("kuberouter") {
+	if (all && env.Spec.Liquid == nil) || env.wantsNetworkProvider("kuberouter") {
 		switch env.Platform.OS {
 		case "linux":
 			uris = append(uris,
@@ -61,7 +85,7 @@ func GetImageURIs(env TargetEnv, all bool) (uris []string) {
 		}
 	}
 
-	if all || env.wantsNetworkProvider("calico") {
+	if (all && env.Spec.Liquid == nil) || env.wantsNetworkProvider("calico") {
 		switch env.Platform.OS {
 		case "linux":
 			uris = append(uris,

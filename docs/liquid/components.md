@@ -55,3 +55,12 @@ The bootloose integration test starts a dynamically configured controller and jo
 ## Inspect versions
 
 Run `k0s liquid components` on a controller to compare every declared version with the Helm release version recorded on its `Chart`. A managed row is complete when its status is `deployed` and both versions match. External rows report `external` because k0s does not inspect or control the provider's release.
+
+## Air-gapped inventory
+
+`k0s airgap list-images --all` renders enabled managed component charts at their
+declared versions and values. The list includes init containers, hooks and
+controller-created ancillary images; Gateway API contributes a CRD chart and no
+images. Disabled components and external replacements are excluded. See
+[Air-gapped liquid inventory](airgap.md) for platform selection, exact archive
+inputs, chart transfer and internal repository configuration.
