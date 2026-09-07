@@ -14,7 +14,7 @@ canonical CBOR, signature, profile, or transparency verification.
 ## Policy and routing
 
 `spec.liquid.admission` is the cluster default. It has `mode`, `issuers`, `profiles`,
-`exempt`, `attestationStore`, and `failurePolicy`. `failurePolicy` is always `Fail`.
+`exempt`, `attestationStore`, `log`, and `failurePolicy`. `failurePolicy` is always `Fail`.
 The default is `mode: off`, which is audit-only and lets existing clusters adopt the
 feature without changing workload admission. An enforcing policy requires an
 `attestationStore` URL only when the worker node store is disabled.
@@ -37,7 +37,7 @@ metadata:
   name: strict
   namespace: customer-a
 spec:
-  mode: attestation
+  mode: attestation+log
   issuers:
   - taap:1:ed25519:accepted-issuer
   profiles:
@@ -45,7 +45,32 @@ spec:
   exempt: []
   failurePolicy: Fail
   attestationStore: https://attestations.example
+  log:
+    mode: verify
+    lake: https://lake.example
+    trust:
+      identity:
+        taapID: taap:1:ed25519:lake-production
+        publicKey: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      witnessThreshold: 1
+      witnesses:
+      - endpoint: https://witness.example/checkpoint
+        publicKey: abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
+    maximumCheckpointAgeSeconds: 300
 ```
+
+`attestation+log` policy sets select `log.mode: verify` to require a valid Lake
+checkpoint signature, every entry and parent tile through that checkpoint, and an
+inclusion proof for the exact attestation. `log.trust.identity` pins Lake's Ed25519
+TAAP identity and public key. `log.trust.witnesses` pins each witness endpoint and key;
+`witnessThreshold` cannot exceed that list. Public keys are 32-byte lowercase
+hexadecimal values. k0s renders these fields into liquid's strict policy JSON without
+using Lake responses as trust anchors.
+
+For an immediate fail-closed fallback, set `log.mode: deny`. Liquid refuses every
+otherwise-valid log-mode attestation with `log verification denied by policy`; it does
+not weaken the policy to unverified inclusion. To operate without log verification,
+make the separate policy choice to use `mode: attestation` or `mode: off`.
 
 ## Deployment and certificates
 
@@ -74,11 +99,13 @@ The policy's `attestationStore` is passed to liquid as `attestation_source`. Whe
 worker node store provides `GET /v1/attestations?subject=<digest>`, it is the preferred
 source. A policy URL remains the fallback where that endpoint is not available.
 
-In `attestation+log` mode, liquid owns the log-verifier interface. It caches the last
-quorum-signed checkpoint and the tiles required to verify inclusion. When disconnected,
-it can verify only from that cache. Missing tiles, an old checkpoint, or any unverifiable
-proof is a refusal; the verifier never assumes inclusion. Until liquid #83 supplies
-complete tile verification, this mode refuses with `log verifier unavailable`.
+In `attestation+log` mode, liquid owns the log verifier. With `log.mode: verify`, it
+checks Lake's checkpoint signature and witness threshold against the policy trust set,
+authenticates every entry and parent tile to that checkpoint, and then verifies the
+checkpoint-bound inclusion proof. The cache retains inspection data and immutable tile
+bytes, but every use reauthenticates the complete path. A missing or forged tile, stale
+checkpoint, invalid proof, or unavailable source is a refusal; the verifier never
+assumes inclusion. Tile failures retain their level, index, and width in the decision.
 
 ## Failure handling and events
 
@@ -104,11 +131,13 @@ The embedded liquid revision supplies:
 - `liquid_admission_reviews_total{decision,reason}` metrics.
 
 The liquid verifier filters issuer and profile before accepting an attestation and uses
-the `verify_attestation` path. Its log verifier remains replaceable so that the
-cached-checkpoint implementation can become complete with liquid #83.
+the `verify_attestation` path. For `attestation+log` policy sets in verify mode, it uses
+liquid's shared checkpoint, tile-path, and inclusion verifier from liquid #83 and #268.
 
 ## Verification
 
-Unit tests cover policy resolution, liquid policy rendering, webhook CA rendering, and
-the adapter's namespace route. The container-backed admission flow is deferred on this
-host because Docker is unavailable.
+Unit tests cover policy resolution, verify-mode policy rendering, the documented
+deny-mode fallback, webhook CA rendering, and the adapter's namespace route. The
+adapter test forwards both an accepted decision with verified inclusion evidence and a
+forged-tile refusal that names the tile. The container-backed admission flow is deferred
+on this host because Docker is unavailable.

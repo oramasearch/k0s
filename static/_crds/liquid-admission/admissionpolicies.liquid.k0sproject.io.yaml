@@ -38,4 +38,40 @@ spec:
                 type: string
               attestationStore:
                 type: string
+              log:
+                type: object
+                properties:
+                  mode:
+                    enum: [deny, verify]
+                    type: string
+                  lake:
+                    type: string
+                  trust:
+                    type: object
+                    properties:
+                      identity:
+                        type: object
+                        properties:
+                          taapID:
+                            type: string
+                          publicKey:
+                            type: string
+                        required: [taapID, publicKey]
+                      witnessThreshold:
+                        type: integer
+                      witnesses:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            endpoint:
+                              type: string
+                            publicKey:
+                              type: string
+                          required: [endpoint, publicKey]
+                    required: [identity, witnessThreshold]
+                  maximumCheckpointAgeSeconds:
+                    minimum: 0
+                    type: integer
+                required: [mode]
             required: [mode, failurePolicy]

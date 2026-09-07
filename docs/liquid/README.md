@@ -15,7 +15,8 @@ remains unchanged unless an upstream behavior itself changes.
 - [Break-glass node access](break-glass.md) gives the certificate-only, time-bounded
   procedure and the lake audit records required for every access window.
 - [Image admission](admission.md) describes the liquid verifier, namespaced policy routing,
-  static Pod deployment, certificate handling, and fail-closed behavior.
+  pinned transparency-log trust, static Pod deployment, certificate handling, and fail-closed
+  behavior.
 - [Declared components](components.md) covers pinned versions, upgrades, and external
   replacements for the opinionated runtime defaults.
 - [Multi-tenancy](multi-tenancy.md) records the customer isolation model and the
