@@ -152,6 +152,48 @@ func TestLiquidAdmissionRequiresStoreWithoutNodeStore(t *testing.T) {
 	assert.NoError(t, errors.Join(config.Validate()...))
 }
 
+func TestLiquidAdmissionLogValidation(t *testing.T) {
+	config := DefaultClusterConfig()
+	config.Spec.Liquid.Admission.Mode = LiquidAdmissionModeAttestationLog
+	config.Spec.Liquid.Admission.Log = &LiquidAdmissionLog{
+		Mode: LiquidAdmissionLogModeVerify,
+		Lake: "https://lake.example",
+		Trust: LiquidAdmissionLogTrust{
+			Identity: LiquidAdmissionLogIdentity{
+				TAAPID:    "taap:1:ed25519:lake",
+				PublicKey: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			},
+			WitnessThreshold: 1,
+			Witnesses: []LiquidAdmissionLogWitness{{
+				Endpoint:  "https://witness.example/checkpoint",
+				PublicKey: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+			}},
+		},
+		MaximumCheckpointAgeSeconds: 300,
+	}
+
+	assert.NoError(t, errors.Join(config.Validate()...))
+
+	config.Spec.Liquid.Admission.Log.Trust.Identity.PublicKey = "not-a-key"
+	config.Spec.Liquid.Admission.Log.Trust.WitnessThreshold = 2
+	config.Spec.Liquid.Admission.Log.Trust.Witnesses[0].Endpoint = "ftp://witness.example"
+
+	err := errors.Join(config.Validate()...)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "admission.log.trust.identity.publicKey")
+	assert.ErrorContains(t, err, "admission.log.trust.witnessThreshold")
+	assert.ErrorContains(t, err, "admission.log.trust.witnesses[0].endpoint")
+}
+
+func TestLiquidAdmissionDenyLogRequiresNoTrust(t *testing.T) {
+	config := DefaultClusterConfig()
+	config.Spec.Liquid.Admission.Log = &LiquidAdmissionLog{
+		Mode: LiquidAdmissionLogModeDeny,
+	}
+
+	assert.NoError(t, errors.Join(config.Validate()...))
+}
+
 func TestLiquidCiliumRejectsBuiltInNetworkProvider(t *testing.T) {
 	for _, provider := range []string{"kuberouter", "calico"} {
 		t.Run(provider, func(t *testing.T) {

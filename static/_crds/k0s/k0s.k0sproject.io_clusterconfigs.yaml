@@ -544,6 +544,59 @@ spec:
                         items:
                           type: string
                         type: array
+                      log:
+                        description: LiquidAdmissionLog selects transparency-log handling
+                          for an admission policy.
+                        properties:
+                          lake:
+                            type: string
+                          maximumCheckpointAgeSeconds:
+                            minimum: 0
+                            type: integer
+                          mode:
+                            enum:
+                            - deny
+                            - verify
+                            type: string
+                          trust:
+                            description: LiquidAdmissionLogTrust contains the pinned
+                              Lake identity and witness keys.
+                            properties:
+                              identity:
+                                description: LiquidAdmissionLogIdentity identifies
+                                  the signing key for a Lake log.
+                                properties:
+                                  publicKey:
+                                    type: string
+                                  taapID:
+                                    type: string
+                                required:
+                                - publicKey
+                                - taapID
+                                type: object
+                              witnessThreshold:
+                                type: integer
+                              witnesses:
+                                items:
+                                  description: LiquidAdmissionLogWitness identifies
+                                    one checkpoint witness key.
+                                  properties:
+                                    endpoint:
+                                      type: string
+                                    publicKey:
+                                      type: string
+                                  required:
+                                  - endpoint
+                                  - publicKey
+                                  type: object
+                                type: array
+                            required:
+                            - identity
+                            - witnessThreshold
+                            type: object
+                        required:
+                        - mode
+                        type: object
                       mode:
                         enum:
                         - "off"

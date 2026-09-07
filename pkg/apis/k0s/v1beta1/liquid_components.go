@@ -4,6 +4,7 @@
 package v1beta1
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -27,6 +28,8 @@ const (
 	LiquidAdmissionModeAttestation    = "attestation"
 	LiquidAdmissionModeAttestationLog = "attestation+log"
 	LiquidAdmissionFailurePolicyFail  = "Fail"
+	LiquidAdmissionLogModeDeny        = "deny"
+	LiquidAdmissionLogModeVerify      = "verify"
 )
 
 // LiquidSpec contains the liquid-specific cluster configuration.
@@ -57,8 +60,38 @@ type LiquidAdmission struct {
 	Profiles []string `json:"profiles,omitempty"`
 	Exempt   []string `json:"exempt,omitempty"`
 	// +kubebuilder:validation:Enum=Fail
-	FailurePolicy    string `json:"failurePolicy"`
-	AttestationStore string `json:"attestationStore,omitempty"`
+	FailurePolicy    string              `json:"failurePolicy"`
+	AttestationStore string              `json:"attestationStore,omitempty"`
+	Log              *LiquidAdmissionLog `json:"log,omitempty"`
+}
+
+// LiquidAdmissionLog selects transparency-log handling for an admission policy.
+type LiquidAdmissionLog struct {
+	// +kubebuilder:validation:Enum=deny;verify
+	Mode  string                  `json:"mode"`
+	Lake  string                  `json:"lake,omitempty"`
+	Trust LiquidAdmissionLogTrust `json:"trust,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	MaximumCheckpointAgeSeconds int `json:"maximumCheckpointAgeSeconds,omitempty"`
+}
+
+// LiquidAdmissionLogTrust contains the pinned Lake identity and witness keys.
+type LiquidAdmissionLogTrust struct {
+	Identity         LiquidAdmissionLogIdentity  `json:"identity"`
+	WitnessThreshold int                         `json:"witnessThreshold"`
+	Witnesses        []LiquidAdmissionLogWitness `json:"witnesses,omitempty"`
+}
+
+// LiquidAdmissionLogIdentity identifies the signing key for a Lake log.
+type LiquidAdmissionLogIdentity struct {
+	TAAPID    string `json:"taapID"`
+	PublicKey string `json:"publicKey"`
+}
+
+// LiquidAdmissionLogWitness identifies one checkpoint witness key.
+type LiquidAdmissionLogWitness struct {
+	Endpoint  string `json:"endpoint"`
+	PublicKey string `json:"publicKey"`
 }
 
 // LiquidComponents contains every component bundled by liquid.
@@ -270,7 +303,66 @@ func (a *LiquidAdmission) Validate(path *field.Path) []error {
 			LiquidAdmissionFailurePolicyFail,
 		}))
 	}
+	if a.Log != nil {
+		errs = append(errs, a.Log.validate(path.Child("log"))...)
+	}
 	return errs
+}
+
+func (l *LiquidAdmissionLog) validate(path *field.Path) []error {
+	if l.Mode != LiquidAdmissionLogModeDeny && l.Mode != LiquidAdmissionLogModeVerify {
+		return []error{field.NotSupported(path.Child("mode"), l.Mode, []string{
+			LiquidAdmissionLogModeDeny,
+			LiquidAdmissionLogModeVerify,
+		})}
+	}
+	if l.Mode == LiquidAdmissionLogModeDeny {
+		return nil
+	}
+
+	var errs []error
+	if err := validateLiquidEndpoint(l.Lake); err != nil {
+		errs = append(errs, field.Invalid(path.Child("lake"), l.Lake, err.Error()))
+	}
+	if !strings.HasPrefix(l.Trust.Identity.TAAPID, "taap:1:ed25519:") {
+		errs = append(errs, field.Invalid(path.Child("trust", "identity", "taapID"), l.Trust.Identity.TAAPID, "an Ed25519 Lake identity is required"))
+	}
+	if err := validateLiquidAdmissionPublicKey(l.Trust.Identity.PublicKey); err != nil {
+		errs = append(errs, field.Invalid(path.Child("trust", "identity", "publicKey"), l.Trust.Identity.PublicKey, err.Error()))
+	}
+	if l.Trust.WitnessThreshold < 0 {
+		errs = append(errs, field.Invalid(path.Child("trust", "witnessThreshold"), l.Trust.WitnessThreshold, "must not be negative"))
+	}
+	if l.Trust.WitnessThreshold > len(l.Trust.Witnesses) {
+		errs = append(errs, field.Invalid(path.Child("trust", "witnessThreshold"), l.Trust.WitnessThreshold, "must not exceed the number of witnesses"))
+	}
+	if l.MaximumCheckpointAgeSeconds < 0 {
+		errs = append(errs, field.Invalid(path.Child("maximumCheckpointAgeSeconds"), l.MaximumCheckpointAgeSeconds, "must not be negative"))
+	}
+	for index, witness := range l.Trust.Witnesses {
+		witnessPath := path.Child("trust", "witnesses").Index(index)
+		if err := validateLiquidEndpoint(witness.Endpoint); err != nil {
+			errs = append(errs, field.Invalid(witnessPath.Child("endpoint"), witness.Endpoint, err.Error()))
+		}
+		if err := validateLiquidAdmissionPublicKey(witness.PublicKey); err != nil {
+			errs = append(errs, field.Invalid(witnessPath.Child("publicKey"), witness.PublicKey, err.Error()))
+		}
+	}
+	return errs
+}
+
+func validateLiquidAdmissionPublicKey(value string) error {
+	if len(value) != 64 {
+		return errors.New("must be a 32-byte lowercase hexadecimal key")
+	}
+	if value != strings.ToLower(value) {
+		return errors.New("must be a 32-byte lowercase hexadecimal key")
+	}
+	decoded, err := hex.DecodeString(value)
+	if err != nil || len(decoded) != 32 {
+		return errors.New("must be a 32-byte lowercase hexadecimal key")
+	}
+	return nil
 }
 
 // Validate checks the cluster platform endpoints.

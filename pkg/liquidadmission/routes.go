@@ -58,19 +58,7 @@ func Resolve(defaultPolicy v1beta1.LiquidAdmission, policies []NamespacePolicy) 
 
 // PolicyJSON produces liquid's strict version-1 policy JSON.
 func PolicyJSON(policy v1beta1.LiquidAdmission) ([]byte, error) {
-	return json.Marshal(struct {
-		Version           int      `json:"v"`
-		Mode              string   `json:"mode"`
-		Issuers           []string `json:"issuers"`
-		Profiles          []string `json:"profiles"`
-		Exempt            []string `json:"exempt"`
-		ExemptNamespaces  []string `json:"exempt_namespaces"`
-		AttestationSource string   `json:"attestation_source"`
-		Log               struct {
-			Lake                    string `json:"lake"`
-			MaximumCheckpointAgeSec int    `json:"max_checkpoint_age_seconds"`
-		} `json:"log"`
-	}{
+	return json.Marshal(liquidPolicyJSON{
 		Version:           1,
 		Mode:              policy.Mode,
 		Issuers:           nonNil(policy.Issuers),
@@ -78,7 +66,72 @@ func PolicyJSON(policy v1beta1.LiquidAdmission) ([]byte, error) {
 		Exempt:            nonNil(policy.Exempt),
 		ExemptNamespaces:  []string{"kube-system"},
 		AttestationSource: policy.AttestationStore,
+		Log:               liquidLogJSON(policy.Log),
 	})
+}
+
+type liquidPolicyJSON struct {
+	Version           int             `json:"v"`
+	Mode              string          `json:"mode"`
+	Issuers           []string        `json:"issuers"`
+	Profiles          []string        `json:"profiles"`
+	Exempt            []string        `json:"exempt"`
+	ExemptNamespaces  []string        `json:"exempt_namespaces"`
+	AttestationSource string          `json:"attestation_source"`
+	Log               liquidLogPolicy `json:"log"`
+}
+
+type liquidLogPolicy struct {
+	Mode                    string         `json:"mode"`
+	Lake                    string         `json:"lake"`
+	Trust                   liquidLogTrust `json:"trust"`
+	MaximumCheckpointAgeSec int            `json:"max_checkpoint_age_seconds"`
+}
+
+type liquidLogTrust struct {
+	Identity         liquidLogIdentity  `json:"identity"`
+	WitnessThreshold int                `json:"witness_threshold"`
+	Witnesses        []liquidLogWitness `json:"witnesses"`
+}
+
+type liquidLogIdentity struct {
+	TAAPID    string `json:"taap_id"`
+	PublicKey string `json:"public_key"`
+}
+
+type liquidLogWitness struct {
+	Endpoint  string `json:"endpoint"`
+	PublicKey string `json:"public_key"`
+}
+
+func liquidLogJSON(log *v1beta1.LiquidAdmissionLog) liquidLogPolicy {
+	output := liquidLogPolicy{
+		Mode: v1beta1.LiquidAdmissionLogModeDeny,
+		Trust: liquidLogTrust{
+			Witnesses: []liquidLogWitness{},
+		},
+	}
+	if log == nil {
+		return output
+	}
+	if log.Mode != "" {
+		output.Mode = log.Mode
+	}
+	output.Lake = log.Lake
+	output.Trust.Identity = liquidLogIdentity{
+		TAAPID:    log.Trust.Identity.TAAPID,
+		PublicKey: log.Trust.Identity.PublicKey,
+	}
+	output.Trust.WitnessThreshold = log.Trust.WitnessThreshold
+	output.Trust.Witnesses = make([]liquidLogWitness, 0, len(log.Trust.Witnesses))
+	for _, witness := range log.Trust.Witnesses {
+		output.Trust.Witnesses = append(output.Trust.Witnesses, liquidLogWitness{
+			Endpoint:  witness.Endpoint,
+			PublicKey: witness.PublicKey,
+		})
+	}
+	output.MaximumCheckpointAgeSec = log.MaximumCheckpointAgeSeconds
+	return output
 }
 
 func policySetName(namespace, name string) string {
