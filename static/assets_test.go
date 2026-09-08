@@ -23,7 +23,7 @@ func TestRenderTenantNamespaceProfile(t *testing.T) {
 	require.NoError(t, err)
 
 	objects := decodeManifestObjects(t, rendered)
-	require.Len(t, objects, 4)
+	require.Len(t, objects, 6)
 	assert.Equal(t, "Namespace", objects[0].GetKind())
 	assert.Equal(t, "preview-change-21", objects[0].GetName())
 	assert.Equal(t, "restricted", objects[0].GetLabels()["pod-security.kubernetes.io/enforce"])
@@ -38,6 +38,12 @@ func TestRenderTenantNamespaceProfile(t *testing.T) {
 
 	assert.Equal(t, "LimitRange", objects[3].GetKind())
 	assert.Equal(t, "preview-change-21", objects[3].GetNamespace())
+
+	assert.Equal(t, "Role", objects[4].GetKind())
+	assert.Equal(t, "liquid-tenant", objects[4].GetName())
+	assert.Equal(t, "preview-change-21", objects[4].GetNamespace())
+	assert.Equal(t, "RoleBinding", objects[5].GetKind())
+	assert.Equal(t, "preview-change-21", objects[5].GetNamespace())
 }
 
 func TestRenderTenantNamespaceProfileRejectsInvalidName(t *testing.T) {

@@ -49,8 +49,11 @@ k0s liquid tenant-profile "${tenant_namespace}" | k0s kubectl apply -f -
 
 The output contains a namespace labelled to enforce, audit, and warn at Pod
 Security Standards `restricted`; a deny-all ingress and egress `NetworkPolicy`;
-a `ResourceQuota`; and a `LimitRange` that supplies default container requests
-and limits. Network access remains closed until the operator adds explicit policy
+a `ResourceQuota`; a `LimitRange` that supplies default container requests
+and limits; and a namespaced tenant Role and RoleBinding. The binding grants only
+the workload permissions listed in the [platform access contract](platform-surface.md#tenant-rbac-is-authoritative)
+to `liquid:tenant:<namespace>`, with no Secret access. It must be the tenant's only
+grant in that namespace. Network access remains closed until the operator adds explicit policy
 for required DNS and service paths. Quota values are baseline safeguards and may
 be replaced by a customer-specific policy.
 
