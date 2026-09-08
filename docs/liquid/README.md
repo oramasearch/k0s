@@ -8,6 +8,28 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 These pages document the private `liquid` branch additions. Upstream k0s documentation
 remains unchanged unless an upstream behavior itself changes.
 
+## Use the liquid distribution
+
+Use the `liquid` branch and its `k0s` artifact for liquid clusters. `main` is the
+pristine `upstream/main` mirror and is only fast-forwarded from upstream; liquid
+changes are rebased onto it. An upstream k0s binary does not declare the liquid
+components required by the Lake runbooks.
+
+Liquid k0s has a Linux-only runtime. On a Mac, the native no-Docker command below
+builds a Linux ARM64 ELF artifact; that cross-build is expected, but the artifact
+cannot run on macOS:
+
+```sh
+make DOCKER="" EMBEDDED_BINS_BUILDMODE=none BUILD_GO_LDFLAGS_EXTRA="" build
+```
+
+Use the resulting `k0s` artifact on a Linux host, or provide a published artifact
+from the `liquid` branch as `K0S_BINARY` to the connected Lake installer. The
+connected runbook retains its explicit Linux-host validation deferral.
+
+- [Lake on one k0s node](lake-on-k0s.md) installs Lake on a connected Linux host.
+- [Air-gapped Lake installation (orama-operator repository)](https://github.com/oramasearch/orama-operator/blob/main/docs/install/k0s.md) gives the air-gapped Lake procedure. It lives with the operator because the transferred Lake and operator artifacts are managed there; its Linux-host validation remains deferred.
+
 - [Chunk-aware node images](chunk-aware-node.md) describes the embedded node store, OCI
   annotation contract, containerd proxy snapshotter, cross-image chunk reuse, and fallback path.
 - [Immutable node images](node-image.md) describes the bootc host contract, signed
