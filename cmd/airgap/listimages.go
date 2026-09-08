@@ -41,8 +41,13 @@ func newAirgapListImagesCmd() *cobra.Command {
 				targetEnv.Spec = nodeConfig.Spec
 			}
 
+			targetEnv.Context = cmd.Context()
+			images, err := airgap.GetImageURIs(targetEnv, all)
+			if err != nil {
+				return err
+			}
 			out := cmd.OutOrStdout()
-			for _, uri := range airgap.GetImageURIs(targetEnv, all) {
+			for _, uri := range images {
 				if _, err := fmt.Fprintln(out, uri); err != nil {
 					return err
 				}
@@ -57,7 +62,8 @@ func newAirgapListImagesCmd() *cobra.Command {
 	flags.AddFlagSet(config.GetPersistentFlagSet())
 	flags.AddFlagSet(config.FileInputFlag())
 	flags.Var((*platformFlag)(&targetEnv.Platform), "platform", "the platform to list images for")
-	flags.BoolVar(&all, "all", false, "include all images, even if they are not used in the current configuration")
+	flags.StringVar(&targetEnv.ChartDir, "chart-dir", "", "read exact liquid chart archives from this directory without network access")
+	flags.BoolVar(&all, "all", false, "include optional base images; liquid components follow their declarations")
 
 	return cmd
 }

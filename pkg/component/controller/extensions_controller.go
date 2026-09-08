@@ -171,7 +171,7 @@ func liquidComponentCharts(liquid *k0sv1beta1.LiquidSpec) k0sv1beta1.ChartsSetti
 			chart.ChartName = resourceName + "/" + component.Chart.Name
 			chart.Version = component.Version
 			chart.Values = liquid.LiquidComponentValues(entry.Name)
-			chart.TargetNS = liquidComponentTargetNamespace(entry.Name)
+			chart.TargetNS = k0sv1beta1.LiquidComponentTargetNamespace(entry.Name)
 			chart.Repository = &k0sv1beta1.Repository{
 				Name: resourceName,
 				URL:  component.Chart.Repository,
@@ -181,17 +181,6 @@ func liquidComponentCharts(liquid *k0sv1beta1.LiquidSpec) k0sv1beta1.ChartsSetti
 	}
 
 	return charts
-}
-
-func liquidComponentTargetNamespace(componentName string) string {
-	switch componentName {
-	case k0sv1beta1.LiquidComponentCertManager:
-		return "cert-manager"
-	case k0sv1beta1.LiquidComponentDistributedStorage:
-		return "longhorn-system"
-	default:
-		return metav1.NamespaceSystem
-	}
 }
 
 func (ec *ExtensionsController) reconcileConfig(ctx context.Context, stackReconciledOnceCh chan<- struct{}) {

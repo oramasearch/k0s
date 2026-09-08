@@ -72,10 +72,12 @@ func (s *airgapSuite) SetupTest() {
 	ssh, err := s.SSH(ctx, s.WorkerNode(0))
 	s.Require().NoError(err)
 	defer ssh.Disconnect()
-	for _, i := range airgap.GetImageURIs(airgap.TargetEnv{
+	images, err := airgap.GetImageURIs(airgap.TargetEnv{
 		Spec:     v1beta1.DefaultClusterSpec(),
 		Platform: platforms.DefaultSpec(),
-	}, true) {
+	}, true)
+	s.Require().NoError(err)
+	for _, i := range images {
 		if strings.HasPrefix(i, constant.KubePauseContainerImage+":") {
 			continue // The pause image is pinned by containerd itself
 		}
@@ -193,10 +195,12 @@ spec:
 	ssh, err := s.SSH(ctx, s.WorkerNode(0))
 	s.Require().NoError(err)
 	defer ssh.Disconnect()
-	for _, i := range airgap.GetImageURIs(airgap.TargetEnv{
+	images, err := airgap.GetImageURIs(airgap.TargetEnv{
 		Spec:     v1beta1.DefaultClusterSpec(),
 		Platform: platforms.DefaultSpec(),
-	}, true) {
+	}, true)
+	s.Require().NoError(err)
+	for _, i := range images {
 		output, err := ssh.ExecWithOutput(ctx, fmt.Sprintf(`k0s ctr i ls "name==%s"`, i))
 		if s.NoErrorf(err, "Failed to check %s", i) {
 			s.Contains(output, "io.cri-containerd.pinned=pinned", "%s is not pinned", i)
