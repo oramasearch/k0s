@@ -239,6 +239,18 @@ func LiquidComponentChartResourceName(componentName string) string {
 	}
 }
 
+// LiquidComponentTargetNamespace is shared by deployment and offline rendering.
+func LiquidComponentTargetNamespace(componentName string) string {
+	switch componentName {
+	case LiquidComponentCertManager:
+		return "cert-manager"
+	case LiquidComponentDistributedStorage:
+		return "longhorn-system"
+	default:
+		return "kube-system"
+	}
+}
+
 // Validate checks the liquid component declarations.
 func (l *LiquidSpec) Validate() []error {
 	if l == nil {
