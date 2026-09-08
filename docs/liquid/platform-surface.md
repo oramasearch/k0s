@@ -94,6 +94,49 @@ Kubernetes pod log API.
 Every environment namespace carries `liquid.oramasearch.com/environment=true`, Pod Security Standards
 `restricted`, a default-deny `NetworkPolicy`, `ResourceQuota`, and `LimitRange`. The profile is rendered
 with `k0s liquid tenant-profile <namespace>` and is also the contract used by the environment controller.
+It also contains the namespaced `Role/liquid-tenant` and `RoleBinding/liquid-tenant`. This profile is
+the single definition of tenant access, instantiated once in each environment namespace.
+
+### Tenant RBAC is authoritative
+
+The RoleBinding grants access to the authenticated group `liquid:tenant:<namespace>`. The namespace
+argument determines that group name, so rendering the existing command needs no additional arguments.
+The trusted identity provider must assign membership only to identities authorized for that environment;
+the profile defines authorization and does not issue credentials or create users. Workload service
+accounts, including `default`, are not members of this group and receive no grant from this binding.
+
+| Resources | Tenant verbs |
+|---|---|
+| Pods, Services, ConfigMaps, PersistentVolumeClaims | get, list, watch, create, update, patch, delete |
+| Deployments, StatefulSets (`apps`) | get, list, watch, create, update, patch, delete |
+| Jobs, CronJobs (`batch`) | get, list, watch, create, update, patch, delete |
+| ReplicaSets (`apps`), Events, ResourceQuotas, LimitRanges | get, list, watch |
+| Pod logs | get |
+
+There are no wildcards and **no Secret permissions**, including read, watch, create, update, patch,
+or deletion. There is no access to RBAC objects, service accounts or their tokens, impersonation,
+Pod exec/attach/proxy/port-forward or ephemeral containers, network-policy writes, quota/limit writes,
+namespace writes, or cluster resources. Separate scale subresources, autoscalers, DaemonSets,
+routes, certificates, and custom-resource writes are also omitted. The operator retains domain,
+network, quota, credential, and environment reconciliation. Add a permission only when a concrete
+tenant workflow requires it; the initial grant deliberately favors the smaller set.
+
+**RBAC is the authoritative control for tenant Secret access** (liquid-bridge decision 38).
+The profile's binding must be the only grant tenant identities receive in an environment namespace.
+Kubernetes RBAC is additive: an extra RoleBinding or ClusterRoleBinding, including an `edit` or
+`admin` grant, can invalidate this boundary. RBAC cannot select namespaces by label; the namespaced
+Role and binding must be installed with every environment profile. Do not place privileged service
+accounts in tenant namespaces: a tenant allowed to create Pods can choose a local service account.
+
+`system:serviceaccount:orama-system:orama-operator` retains its separately managed Secret delivery
+permissions. This tenant grant neither replaces nor removes the operator's RBAC. Under this access
+contract, tenant requests cannot reach Secret admission, even when their label and owner reference
+are forged. Cluster administrators remain trusted to maintain this contract and must not add other
+Secret writers in environment namespaces. Omitting Secret API read does not prevent a workload from
+consuming a delivered Secret in its own namespace; this is an environment access boundary, not
+isolation between workloads in one trusting environment.
+
+### Admission is defence in depth
 
 Application configuration has two sources only:
 
@@ -101,15 +144,19 @@ Application configuration has two sources only:
 - `LakeEnvironment.spec.secretRefs` names `LakeSealedSecret` resources. The operator resolves each
   reference and creates a Secret with controller ownership and `lake.orama.cloud/sealed=true`.
 
-k0s installs two `ValidatingAdmissionPolicy` objects when liquid is configured. The first refuses Secret
-creation or update in an environment namespace unless a `LakeSealedSecret` controller owns it and the
-sealed-delivery label is present. The second refuses Pod Secret volumes and Secret-backed environment
-values unless the pod template annotation `liquid.oramasearch.com/sealed-secret-names` lists the resolved
-Secret name. The operator writes that annotation from `spec.secretRefs`; users never author it as an
-environment setting. Together the policies prevent a hand-created Secret from entering a new
-environment or being consumed by its pods. If the admission component from k0s #15 is installed later,
-it may enforce the same contract with live object lookup and replace these policies only after an
-equivalent denial test passes.
+k0s keeps both shipped `ValidatingAdmissionPolicy` objects unchanged. `liquid-environment-secrets`
+checks that a Secret CREATE or UPDATE carries a controller owner reference with kind `LakeSealedSecret`
+and API version `orama.cloud/v1alpha1`, plus `lake.orama.cloud/sealed=true`.
+`liquid-environment-pods` checks that Secret names used by Pod volumes and container environment
+values appear in `liquid.oramasearch.com/sealed-secret-names`. The operator derives that annotation
+from `spec.secretRefs`; it is not an environment setting exposed by Lake.
+
+These are structural checks on submitted fields. They do **not** look up the claimed owner, verify
+its existence or UID, establish actual controller ownership, look up referenced Secrets, or authenticate
+the annotation's author. An authorized Secret writer can submit a nonexistent owner; a tenant can
+author the Pod annotation. Admission catches missing delivery metadata from an authorized writer;
+it does not prove provenance. RBAC prevents the tenant from creating the forged Secret in the first
+place. Owner validation and an unforgeable Pod annotation are not claimed by these policies.
 
 ## Ownership outside k0s
 
@@ -119,6 +166,33 @@ references. Deploy record creation, the sealed envelope, and their existing clie
 remain owned by liquid #84 and orama-operator #129.
 
 ## Verification
+
+The native proof runs without containers:
+
+```sh
+GOMAXPROCS=6 GOFLAGS=-p=6 go build ./...
+GOMAXPROCS=6 GOFLAGS=-p=6 go vet ./...
+GOMAXPROCS=6 GOFLAGS=-p=6 go test ./static ./cmd/liquid
+GOMAXPROCS=6 GOFLAGS=-p=6 go test -tags envtest -count=1 -v ./static -run '^TestTenantProfileRBAC$'
+```
+
+The `envtest` tag enables the live API-server proof; it is separate from unit tests because it needs
+native `kube-apiserver` and `etcd` binaries. Set `KUBEBUILDER_ASSETS` to their directory, or the test
+downloads Kubernetes 1.30.3 assets into a temporary directory. It always starts an isolated cluster
+with RBAC enabled, installs the rendered profile and both shipped admission policies with their
+bindings, and authenticates the tenant by a client certificate in the actual RoleBinding's group.
+The admin client only bootstraps fixtures, including quota status because envtest has no quota
+controller. The operator uses a real service-account token and a separate minimal fixture Role
+granting Secret get/create/update; its production RBAC remains owned by orama-operator.
+
+The proof refuses the issue #40 forgery (`database`, sealed label, nonexistent `LakeSealedSecret`
+controller reference), plain Secret creation, and tenant Secret reads and mutations. The same forged
+payload can be created and updated by the operator, deliberately demonstrating the admission limit.
+It verifies both admission policies are active with refused dry-run requests, checks ordinary tenant
+ConfigMap lifecycle, restricted `untrusted` Pod create/read/delete, Service creation and quota reads,
+and checks authorization denials for Secret watch, escalation, policy changes, and access outside the
+namespace. Envtest verifies API authorization and admission, not workload scheduling, microVM startup,
+or the operator's reconciliation loop (orama-operator #155).
 
 `make check-liquid-platform` starts one bootloose controller-worker with the declared components. It
 runs Pebble v2.10.1 as the ACME double and Loki v3.7.7 as the customer log endpoint, obtains a

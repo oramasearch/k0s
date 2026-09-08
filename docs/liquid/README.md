@@ -22,7 +22,8 @@ remains unchanged unless an upstream behavior itself changes.
 - [Multi-tenancy](multi-tenancy.md) records the customer isolation model and the
   namespace and microVM runtime declarations.
 - [Platform surface](platform-surface.md) defines deploy, logs, environment values,
-  domains, the default Gateway and certificate path, and sealed-secret admission policy.
+  domains, the default Gateway and certificate path, tenant RBAC without Secret access,
+  and the supporting sealed-secret admission policy.
 - [Lake on one k0s node](lake-on-k0s.md) installs the operator and `Lake/hello`, adapts
   storage and external routing to the declared on-premises components, and records the Linux run.
 - [Lifecycle runbooks](lifecycle/README.md) cover upgrades, backup and restore, node
