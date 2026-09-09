@@ -9,8 +9,8 @@ This is a **private copy** of [`k0sproject/k0s`](https://github.com/k0sproject/k
 kept in sync with upstream and modified to support **liquid drips**
 (see [`oramasearch/liquid`](https://github.com/oramasearch/liquid)).
 
-This file is the only addition at the repository root and is named so it will never
-collide with an upstream path.
+This file records the private-copy policy. [`sync.sh`](sync.sh) is the root entry
+point for maintaining the branch relationship below.
 
 ## Why a copy and not a fork
 
@@ -32,19 +32,32 @@ deliberately set to an invalid value as a guard.
 Keeping `main` pristine means `git diff main..liquid` is always exactly our delta —
 which is what makes upstream syncs reviewable rather than archaeological.
 
-**Last synced upstream tag:** _not yet recorded_
+**Last synced upstream tag:** `v1.37.0-alpha.1+k0s.0`
+
+**Last synced upstream commit:** `444794a05883e34dcf796f695ac4d00220556fa3`
+
+This is the verified upstream base already included in `liquid`, not a claim that
+the current upstream tip has been integrated. On 2026-09-08, `origin/main` and
+`upstream/main` both pointed to `377b3d4fc93c58e986438460288d8191f3bb09db`;
+`liquid` was missing 47 upstream commits. The tag above is an ancestor of the
+recorded base (354 commits after that tag). The current upstream tip is 401 commits
+after the same tag. The catch-up rebase remains a separate operation.
 
 ## Syncing with upstream
 
 ```sh
-hack/sync-upstream.sh --dry-run
-hack/sync-upstream.sh --push
+./sync.sh --dry-run
+./sync.sh
 ```
 
-The script validates the guarded `upstream` remote, fast-forwards `main`, rebases
-`liquid`, checks the licence requirements, and updates the line above. Run it at
-every upstream release. See [the upstream-sync guide](docs/liquid/upstream-sync.md)
-for options, conflict recovery, and verification.
+Use a clean, dedicated clone on `liquid` for an actual sync. The script validates
+the guarded `upstream` remote, fast-forwards `main`, rebases `liquid`, checks
+licence files against upstream, and records the tag and commit in this file and
+the guide together. It never pushes. The dry run fetches and performs preflight
+checks without changing branches or files. An unchanged second run creates no
+commit. Run at every upstream release; review the dry run weekly between releases.
+See [the upstream-sync guide](docs/liquid/upstream-sync.md) for options, publishing,
+conflict recovery, and verification.
 
 ## Licence obligations
 
@@ -58,11 +71,16 @@ modified binaries**, three obligations attach:
 1. Include the `LICENSE`.
 2. Retain the `NOTICE` file and its attributions when the selected upstream ref includes one.
 3. **State that we changed the files** — §4(b) requires prominent notices of modification.
-   Our changes must be identifiable, which the `main`/`liquid` branch split already makes
-   true.
+   [`docs/liquid/README.md`](docs/liquid/README.md) is the durable index of our
+   modifications. The branch difference helps review them, but neither a branch
+   split nor an index proves that every changed file carries the required notice.
 
-The current upstream tree has no root `NOTICE`. The sync script reports whether the
-selected upstream ref includes one and checks it when present.
+The current upstream tree has no root `NOTICE`. The sync script reports that
+absence; when present, it requires the upstream `NOTICE` to survive byte-for-byte.
+It also requires unchanged `LICENSE` and `docs/LICENSE` files and a recorded
+modification declaration and index. Review modified-file notices and packaged
+attributions before distributing; the script checks repository contents, not
+binary or documentation packages.
 
 The `docs/` directory is **share-alike**. If we modify and distribute k0s documentation,
 those modifications must be licensed CC-BY-SA-4.0. Prefer keeping liquid documentation in
@@ -97,11 +115,22 @@ liquid verifier; its policy and operations are documented in `docs/liquid/admiss
 See `docs/features/13-deployment-runtime.md` and `docs/features/22-change-capture.md` in
 the liquid repository.
 
-## Dependabot is off
+## Actions and Dependabot
 
-Upstream's `.github/dependabot.yml` is deleted on `liquid` (the default branch of this copy,
-so Dependabot reads nothing), its alerts and security updates are disabled in the repository
-settings, and its open PRs were closed (Steve, 2026-09-03). Dependency updates reach this copy only
-through the upstream sync. The five Dependabot PRs that were merged into `main` before this
-(#4–#9) are why `main` is not currently a fast-forward of upstream; resetting `main` to upstream is
-a separate, explicit step.
+GitHub Actions remain disabled (`enabled: false`, checked 2026-09-08).
+Vulnerability alerts and automated security fixes were disabled by the owner.
+Dependabot version updates are separate: they do not require Actions, and disabling
+them is a repository setting with no stable REST API. Treat that setting as pending
+until the owner verifies it. Deleting `.github/dependabot.yml` on `liquid` does not
+protect the pristine mirror, which retains upstream's copy of that file.
+
+**Dependabot PRs are never merged into `main`.** The mirror takes commits from
+upstream only. Earlier merged Dependabot PRs introduced 12 commits into `main`;
+the owner reset `origin/main` from `37294bdde` to `377b3d4fc` on 2026-09-08.
+None of those commits was an ancestor of `liquid`. Older local clones may still
+have the polluted `main`; do not reset a shared checkout through the sync script.
+Use a fresh dedicated clone or obtain an explicit owner repair decision.
+
+If `main` cannot fast-forward, the script stops and names a merged Dependabot PR
+as the likely cause. It never merges around mirror drift, resets `main`, enables
+Actions, or changes repository settings.
