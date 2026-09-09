@@ -1,119 +1,189 @@
 #!/usr/bin/env bash
-# Synchronize this private k0s copy with k0sproject/k0s.
+# SPDX-FileCopyrightText: 2026 k0s authors
+# SPDX-License-Identifier: Apache-2.0
+# Orama modification: validate and synchronize the private upstream mirror.
 
 set -euo pipefail
 
 readonly expected_upstream_url='https://github.com/k0sproject/k0s.git'
-readonly disabled_push_url='DISABLED'
-readonly last_synced_prefix='**Last synced upstream tag:**'
-
+readonly tag_namespace='refs/sync-upstream/tags'
+readonly sync_guide='docs/liquid/upstream-sync.md'
 dry_run=false
-push=false
 requested_tag=''
-
-usage() {
-  cat <<'EOF'
-Usage: hack/sync-upstream.sh [--dry-run] [--tag <tag>] [--push]
-
-Fetch k0sproject/k0s, fast-forward main, rebase liquid, and record the upstream
-release tag in ORAMA-FORK.md.
-
-  --dry-run    Print the planned sync without changing local branches or pushing.
-  --tag <tag>  Sync main to this upstream release tag instead of upstream/main.
-  --push       Push main fast-forward only and liquid with --force-with-lease.
-EOF
-}
 
 die() {
   printf 'error: %s\n' "$*" >&2
   exit 1
 }
 
-require_clean_worktree() {
-  local worktree=$1
+usage() {
+  cat <<'EOF'
+Usage: ./sync.sh [--dry-run] [--tag <tag>]
 
-  if test -n "$(git -C "$worktree" status --porcelain)"; then
-    die "worktree is not clean: $worktree"
-  fi
+Fetch upstream, validate the mirror and licences, fast-forward main, rebase
+liquid, and commit the sync record on liquid. This script never pushes.
+
+  --dry-run    Fetch and run preflight checks; leave branches and files untouched.
+  --tag <tag>  Select an upstream release tag instead of upstream/main.
+
+Run an actual sync from a clean, dedicated checkout of liquid. No other worktree
+may have main checked out. Conflicts remain for human review; rerere is disabled.
+EOF
 }
 
-branch_worktree() {
-  local branch=$1
-  local worktree=''
-  local branch_ref=''
-  local line=''
-
-  while IFS= read -r line; do
-    case $line in
-      worktree\ *) worktree=${line#worktree } ;;
-      branch\ *)
-        branch_ref=${line#branch }
-        if test "$branch_ref" = "refs/heads/$branch"; then
-          printf '%s\n' "$worktree"
-          return 0
-        fi
-        ;;
-    esac
-  done < <(git worktree list --porcelain)
-
-  return 1
+reachable_tag() {
+  git for-each-ref --merged "$1" --sort=-version:refname \
+    --format='%(refname:strip=3)' "$tag_namespace" | sed -n '1p'
 }
 
-latest_upstream_tag() {
-  git for-each-ref --sort=-version:refname --format='%(refname:strip=2)' refs/tags | head -n 1
+recorded_value() {
+  local document=$1
+  local label=$2
+
+  printf '%s\n' "$document" |
+    awk -v prefix="**Last synced upstream $label:** " '
+      index($0, prefix) == 1 {
+        count++
+        value = substr($0, length(prefix) + 1)
+      }
+      END {
+        if (count == 1 && value ~ /^`[^`]+`$/) {
+          print substr(value, 2, length(value) - 2)
+        }
+      }
+    '
 }
 
-latest_remote_upstream_tag() {
-  git ls-remote --tags --refs upstream |
-    awk '{sub("refs/tags/", "", $2); print $2}' |
-    sort -V |
-    tail -n 1
+check_preserved_file() {
+  local reference=$1
+  local candidate=$2
+  local filename=$3
+  local expected_blob
+  local actual_blob
+
+  expected_blob=$(git rev-parse --verify "$reference:$filename") ||
+    die "$reference is missing $filename"
+  actual_blob=$(git rev-parse --verify "$candidate:$filename" 2>/dev/null) ||
+    die "$candidate must retain $filename"
+  test "$expected_blob" = "$actual_blob" ||
+    die "$candidate:$filename differs from $reference:$filename; human review required"
+  printf 'Licence check: %s is present and byte-for-byte unchanged from %s (%s).\n' \
+    "$filename" "$reference" "$actual_blob"
 }
 
-remote_ref_commit() {
-  local ref=$1
+check_licences() {
+  local reference=$1
+  local candidate=$2
+  local policy
+  local changes
 
-  git ls-remote upstream "$ref" | awk 'NR == 1 { print $1 }'
-}
-
-remote_tag_commit() {
-  local tag=$1
-  local direct_commit=''
-  local peeled_commit=''
-
-  direct_commit=$(remote_ref_commit "refs/tags/$tag")
-  peeled_commit=$(remote_ref_commit "refs/tags/$tag^{}")
-
-  if test -n "$peeled_commit"; then
-    printf '%s\n' "$peeled_commit"
+  check_preserved_file "$reference" "$candidate" LICENSE
+  if git cat-file -e "$reference:NOTICE" 2>/dev/null; then
+    check_preserved_file "$reference" "$candidate" NOTICE
   else
-    printf '%s\n' "$direct_commit"
+    printf 'Licence check: %s has no root NOTICE; no upstream root NOTICE to preserve.\n' "$reference"
+  fi
+  if git cat-file -e "$reference:docs/LICENSE" 2>/dev/null; then
+    check_preserved_file "$reference" "$candidate" docs/LICENSE
+  fi
+  policy=$(git show "$candidate:ORAMA-FORK.md") || die 'liquid must retain ORAMA-FORK.md'
+  changes=$(git show "$candidate:docs/liquid/README.md") || die 'liquid must retain its change index'
+  [[ "$policy" == *'modified to support'* ]] || die 'ORAMA-FORK.md must state our modifications'
+  [[ "$changes" == *'# Liquid-specific k0s changes'* ]] || die 'the liquid change index is missing its declaration'
+  printf 'Licence check: ORAMA-FORK.md declares modifications; docs/liquid/README.md records the changes.\n'
+  printf 'Human review: check prominent notices in modified files and notices shipped with distribution artifacts.\n'
+}
+
+check_record() {
+  local policy
+  local guide
+  local recorded_commit
+  local recorded_tag_commit
+
+  policy=$(git show liquid:ORAMA-FORK.md) || die 'liquid must retain ORAMA-FORK.md'
+  recorded_tag=$(recorded_value "$policy" tag)
+  recorded_commit=$(recorded_value "$policy" commit)
+  test -n "$recorded_tag" || die 'last synced upstream tag is missing or still a placeholder'
+  [[ "$recorded_tag" != *$'\n'* ]] || die 'multiple last synced upstream tag records'
+  [[ "$recorded_commit" =~ ^[0-9a-f]{40}$ ]] || die 'last synced upstream commit must be a full commit ID'
+  git check-ref-format "$tag_namespace/$recorded_tag" || die 'invalid recorded upstream tag'
+  recorded_tag_commit=$(git rev-parse --verify "$tag_namespace/$recorded_tag^{commit}") ||
+    die 'recorded tag does not exist upstream'
+  git merge-base --is-ancestor "$recorded_tag_commit" "$recorded_commit" ||
+    die 'recorded tag is not an ancestor of the recorded upstream commit'
+  git merge-base --is-ancestor "$recorded_commit" "$old_base" ||
+    die 'recorded upstream commit is not an ancestor of the shared upstream base'
+  guide=$(git show "liquid:$sync_guide") || die 'liquid must retain the upstream sync guide'
+  test "$(recorded_value "$guide" tag)" = "$recorded_tag" ||
+    die 'the guide and ORAMA-FORK.md must record the same upstream tag'
+  test "$(recorded_value "$guide" commit)" = "$recorded_commit" ||
+    die 'the guide and ORAMA-FORK.md must record the same upstream commit'
+  printf 'Last synced upstream tag: %s (recorded commit %s).\n' "$recorded_tag" "$recorded_commit"
+}
+
+check_merge_attributes() {
+  local reference=$1
+  local filename
+  local attribute
+  local value
+
+  git ls-tree -r -z --name-only "$reference" |
+    git check-attr --source "$reference" -z --stdin merge |
+    while IFS= read -r -d '' filename; do
+      IFS= read -r -d '' attribute
+      IFS= read -r -d '' value
+      test "$attribute" = merge || die 'unexpected merge attribute output'
+      case $value in
+        unspecified | set | unset | text | binary) ;;
+        *)
+          die "$reference:$filename uses merge=$value; automatic conflict drivers require human review"
+          ;;
+      esac
+    done
+}
+
+require_sync_checkout() {
+  test "$(git symbolic-ref --quiet --short HEAD)" = liquid ||
+    die 'run an actual sync from a dedicated checkout of liquid; use --dry-run to inspect'
+  test -z "$(git status --porcelain)" || die 'liquid checkout must be clean'
+  if git worktree list --porcelain | grep -Fx 'branch refs/heads/main' >/dev/null; then
+    die 'main is checked out in another worktree; use a dedicated clone'
+  fi
+  if git config --get-regexp '^merge\..*\.driver$' >/dev/null; then
+    die 'custom merge drivers require human review; use a dedicated clone without them'
   fi
 }
 
-update_last_synced_tag() {
-  local file=$1
-  local tag=$2
-  local temporary_file="${file}.tmp.$$"
+update_record() {
+  local filename=$1
+  local temporary_file="${filename}.tmp.$$"
 
-  awk -v replacement="$last_synced_prefix \`$tag\`" '
-    $0 ~ /^\*\*Last synced upstream tag:\*\*/ {
-      print replacement
-      replaced = 1
+  awk -v tag="$synced_tag" -v commit="$target_commit" '
+    /^\*\*Last synced upstream tag:\*\*/ {
+      print "**Last synced upstream tag:** `" tag "`"
+      tags++
+      next
+    }
+    /^\*\*Last synced upstream commit:\*\*/ {
+      print "**Last synced upstream commit:** `" commit "`"
+      commits++
       next
     }
     { print }
     END {
-      if (!replaced) {
+      if (tags != 1 || commits != 1) {
         exit 1
       }
     }
-  ' "$file" > "$temporary_file" || {
+  ' "$filename" >"$temporary_file" || {
     rm -f "$temporary_file"
-    die "ORAMA-FORK.md is missing the last-synced marker"
+    die "$filename must have exactly one tag and commit record"
   }
-
-  mv "$temporary_file" "$file"
+  if cmp -s "$filename" "$temporary_file"; then
+    rm "$temporary_file"
+  else
+    mv "$temporary_file" "$filename"
+  fi
 }
 
 while test "$#" -gt 0; do
@@ -121,196 +191,112 @@ while test "$#" -gt 0; do
     --dry-run)
       dry_run=true
       ;;
-    --push)
-      push=true
-      ;;
     --tag)
       test "$#" -ge 2 || die '--tag requires a tag name'
       requested_tag=$2
+      git check-ref-format "refs/tags/$requested_tag" || die 'invalid tag name'
       shift
       ;;
-    --help|-h)
+    --help | -h)
       usage
       exit 0
       ;;
     *)
-      die "unknown option: $1"
+      die "unknown option: $1 (this script never pushes)"
       ;;
   esac
   shift
 done
 
-repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || die 'run this inside a Git checkout'
+repo_root=$(git rev-parse --show-toplevel) || die 'run inside a Git checkout'
 cd "$repo_root"
+test "$(git config --get-all remote.upstream.url)" = "$expected_upstream_url" ||
+  die "upstream must have exactly one fetch URL: $expected_upstream_url"
+test "$(git remote get-url --push --all upstream)" = DISABLED ||
+  die 'all upstream pushes must be guarded by the single push URL DISABLED'
+for branch in main liquid; do
+  git show-ref --verify --quiet "refs/heads/$branch" || die "missing local $branch branch"
+done
+for operation in rebase-merge rebase-apply MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD; do
+  test ! -e "$(git rev-parse --git-path "$operation")" ||
+    die "unfinished $operation; finish or abort it before syncing"
+done
 
-git remote get-url upstream >/dev/null 2>&1 || die 'missing required upstream remote'
-upstream_url=$(git remote get-url upstream)
-upstream_push_url=$(git remote get-url --push upstream)
-
-test "$upstream_url" = "$expected_upstream_url" ||
-  die "upstream fetch URL must be $expected_upstream_url; found $upstream_url"
-test "$upstream_push_url" = "$disabled_push_url" ||
-  die "upstream push URL must be $disabled_push_url; found $upstream_push_url"
-
-if test -f ORAMA-FORK.md; then
-  grep -Fq 'modified to support' ORAMA-FORK.md ||
-    die 'ORAMA-FORK.md must state that this copy is modified'
-  grep -Fq "$last_synced_prefix" ORAMA-FORK.md ||
-    die 'ORAMA-FORK.md is missing the last-synced marker'
-else
-  if git show-ref --verify --quiet refs/heads/liquid; then
-    liquid_policy_ref=liquid
-  else
-    liquid_policy_ref=origin/liquid
-  fi
-  git cat-file -e "$liquid_policy_ref:ORAMA-FORK.md" 2>/dev/null ||
-    die 'liquid must contain ORAMA-FORK.md at the repository root'
-  git show "$liquid_policy_ref:ORAMA-FORK.md" | grep -Fq 'modified to support' ||
-    die 'ORAMA-FORK.md must state that this copy is modified'
-  git show "$liquid_policy_ref:ORAMA-FORK.md" | grep -Fq "$last_synced_prefix" ||
-    die 'ORAMA-FORK.md is missing the last-synced marker'
+if ! "$dry_run"; then
+  require_sync_checkout
 fi
-
+printf 'Fetching upstream main and tags; nothing will be pushed.\n'
+git fetch --no-tags --prune upstream \
+  '+refs/heads/main:refs/remotes/upstream/main' \
+  "+refs/tags/*:$tag_namespace/*"
+target_ref=refs/remotes/upstream/main
 if test -n "$requested_tag"; then
-  git check-ref-format "refs/tags/$requested_tag" || die "invalid tag name: $requested_tag"
-  target_description="upstream tag $requested_tag"
+  target_ref="$tag_namespace/$requested_tag"
+fi
+target_commit=$(git rev-parse --verify "$target_ref^{commit}") || die 'upstream target is missing'
+main_commit=$(git rev-parse refs/heads/main)
+if ! git merge-base --is-ancestor "$main_commit" "$target_commit"; then
+  git log --oneline "$target_commit..main" >&2
+  die "main cannot fast-forward to $target_ref: someone has committed to the mirror, likely a merged Dependabot PR (or an older target was selected). main takes upstream commits only. Human repair required; no branches changed."
+fi
+printf 'Mirror check: main can fast-forward from %s to %s.\n' "$main_commit" "$target_commit"
+old_base=$(git merge-base liquid "$target_commit") || die 'liquid and upstream have no shared history'
+synced_tag=$(reachable_tag "$target_commit")
+test -n "$synced_tag" || die 'no upstream tag is an ancestor of the selected target'
+check_record
+check_merge_attributes liquid
+check_merge_attributes "$target_commit"
+printf 'New upstream tag: %s (highest version reachable from %s).\n' "$synced_tag" "$target_commit"
+printf 'Upstream commits missing from liquid: %s\n' "$(git rev-list --count "liquid..$target_commit")"
+printf 'Commits liquid carries: %s\n' "$(git rev-list --count "$target_commit..liquid")"
+git log --reverse --oneline "$target_commit..liquid"
+check_licences "$old_base" liquid
+git cat-file -e "$target_commit:LICENSE" || die 'new upstream target has no LICENSE'
+if git cat-file -e "$target_commit:NOTICE" 2>/dev/null; then
+  printf 'New upstream target includes NOTICE; its contents must survive the rebase.\n'
 else
-  target_description='upstream/main'
+  printf 'New upstream target has no root NOTICE.\n'
 fi
 
 if "$dry_run"; then
-  if test -n "$requested_tag"; then
-    target_commit=$(remote_tag_commit "$requested_tag")
-    test -n "$target_commit" || die "upstream tag does not exist: $requested_tag"
-    synced_tag=$requested_tag
+  printf 'Dry run: preflight checks passed; no branches or files changed.\n'
+  if test "$main_commit" = "$target_commit" && test "$old_base" = "$target_commit"; then
+    printf 'Upstream has not moved relative to main and liquid; no fast-forward or rebase needed.\n'
   else
-    target_commit=$(remote_ref_commit refs/heads/main)
-    test -n "$target_commit" || die 'upstream/main does not exist'
-    synced_tag=$(latest_remote_upstream_tag)
-    test -n "$synced_tag" || die 'could not determine the latest upstream tag'
-  fi
-
-  printf 'Dry run: no local branches will change and nothing will be pushed.\n'
-  printf 'Would run: git fetch upstream --tags\n'
-  printf 'Current upstream tag: %s\n' "$synced_tag"
-  printf 'Would fast-forward main from %s to %s (%s).\n' \
-    "$(git rev-parse --short main)" "${target_commit:0:12}" "$target_description"
-  printf 'Would rebase liquid onto the resulting main.\n'
-  printf 'Would verify LICENSE and, when supplied upstream, NOTICE after the rebase.\n'
-  printf 'Would record %s in ORAMA-FORK.md.\n' "$synced_tag"
-  if "$push"; then
-    printf 'Would push main fast-forward only and liquid with --force-with-lease.\n'
+    printf 'Would fast-forward main, rebase liquid, verify licences against the new upstream tree, and record %s.\n' "$synced_tag"
+    printf 'Human review: a dry run does not attempt the rebase or establish that it is conflict-free.\n'
   fi
   exit 0
 fi
 
-printf 'Fetching upstream tags and branches.\n'
-git fetch upstream --tags
-
-if ! git show-ref --verify --quiet refs/heads/liquid; then
-  git show-ref --verify --quiet refs/remotes/origin/liquid ||
-    die 'missing local liquid branch and origin/liquid fallback'
-  git branch --track liquid origin/liquid
+if test "$main_commit" != "$target_commit"; then
+  git update-ref -m 'Fast-forward upstream mirror' refs/heads/main "$target_commit" "$main_commit"
+  printf 'Fast-forwarded main to %s.\n' "$target_commit"
 fi
-
-if test -n "$requested_tag"; then
-  target_commit=$(git rev-parse --verify "refs/tags/$requested_tag^{commit}") ||
-    die "upstream tag does not resolve to a commit: $requested_tag"
-  synced_tag=$requested_tag
-else
-  target_commit=$(git rev-parse --verify upstream/main)
-  synced_tag=$(latest_upstream_tag)
-  test -n "$synced_tag" || die 'could not determine the latest upstream tag'
+if test "$old_base" != "$target_commit"; then
+  printf 'Rebasing liquid onto main with cached conflict resolution disabled.\n'
+  if ! git -c rerere.enabled=false -c rerere.autoupdate=false \
+    -c core.hooksPath=/dev/null -c rebase.autoStash=false \
+    rebase --no-autostash --no-update-refs --rebase-merges --onto "$target_commit" "$old_base"; then
+    printf '\nRebase stopped; conflicting paths (if any):\n' >&2
+    git diff --name-only --diff-filter=U >&2
+    printf 'Human action in %s: inspect git status, then resolve and git rebase --continue, or git rebase --abort.\n' "$repo_root" >&2
+    printf 'main remains fast-forwarded. No sync record was written; nothing was pushed.\n' >&2
+    exit 1
+  fi
 fi
-
-git cat-file -e "$target_commit:LICENSE" 2>/dev/null ||
-  die "$target_description does not contain LICENSE at its root"
-if git cat-file -e "$target_commit:NOTICE" 2>/dev/null; then
-  upstream_has_notice=true
-  printf 'Apache check: %s contains LICENSE and NOTICE.\n' "$target_description"
-else
-  upstream_has_notice=false
-  printf 'Apache check: %s contains LICENSE; it contains no NOTICE, so no NOTICE check applies.\n' \
-    "$target_description"
-fi
-
-main_commit=$(git rev-parse --verify main)
-if ! git merge-base --is-ancestor "$main_commit" "$target_commit"; then
-  die "refusing to move main: $target_description is not a fast-forward from main"
-fi
-
-liquid_worktree=$(branch_worktree liquid || true)
-if test -n "$liquid_worktree"; then
-  require_clean_worktree "$liquid_worktree"
-fi
-
-main_worktree=$(branch_worktree main || true)
-if test -n "$main_worktree"; then
-  require_clean_worktree "$main_worktree"
-  printf 'Fast-forwarding main in %s.\n' "$main_worktree"
-  git -C "$main_worktree" merge --ff-only "$target_commit"
-else
-  printf 'Fast-forwarding main.\n'
-  git update-ref refs/heads/main "$target_commit" "$main_commit"
-fi
-
-temporary_liquid_worktree=''
-if test -z "$liquid_worktree"; then
-  temporary_liquid_worktree=$(mktemp -d "${TMPDIR:-/tmp}/k0s-upstream-sync.XXXXXX")
-  git worktree add "$temporary_liquid_worktree" liquid
-  liquid_worktree=$temporary_liquid_worktree
-fi
-
-printf 'Rebasing liquid onto main.\n'
-if ! git -C "$liquid_worktree" rebase main; then
-  printf '\nRebase stopped because of conflicts. Resolve them in: %s\n' "$liquid_worktree" >&2
-  printf '  cd %q\n' "$liquid_worktree" >&2
-  printf '  git status\n' >&2
-  printf '  # resolve the conflicted files, then stage them\n' >&2
-  printf '  git add <resolved-files>\n' >&2
-  printf '  git rebase --continue\n' >&2
-  printf '  # repeat the resolution commands until the rebase completes\n' >&2
-  if "$push"; then
-    printf '  %q --push\n' "$repo_root/hack/sync-upstream.sh" >&2
+check_licences "$target_commit" liquid
+update_record ORAMA-FORK.md
+update_record "$sync_guide"
+if git diff --quiet -- ORAMA-FORK.md "$sync_guide"; then
+  if test "$main_commit" = "$target_commit" && test "$old_base" = "$target_commit"; then
+    printf 'Upstream has not moved; sync record is current. Nothing to do.\n'
   else
-    printf '  %q\n' "$repo_root/hack/sync-upstream.sh" >&2
+    printf 'Sync complete: main and liquid include %s; sync record was already current.\n' "$target_commit"
   fi
-  if test -n "$temporary_liquid_worktree"; then
-    printf '  git worktree remove %q\n' "$liquid_worktree" >&2
-  fi
-  exit 1
-fi
-
-git -C "$liquid_worktree" cat-file -e 'HEAD:ORAMA-FORK.md' 2>/dev/null ||
-  die 'liquid must retain ORAMA-FORK.md after the rebase'
-git -C "$liquid_worktree" show 'HEAD:ORAMA-FORK.md' | grep -Fq 'modified to support' ||
-  die 'ORAMA-FORK.md must state that this copy is modified after the rebase'
-git -C "$liquid_worktree" cat-file -e 'HEAD:LICENSE' 2>/dev/null ||
-  die 'liquid must retain LICENSE at the repository root after the rebase'
-if "$upstream_has_notice"; then
-  git -C "$liquid_worktree" cat-file -e 'HEAD:NOTICE' 2>/dev/null ||
-    die 'liquid must retain the upstream NOTICE at the repository root after the rebase'
-  notice_suffix=' and NOTICE'
 else
-  notice_suffix=''
+  git add ORAMA-FORK.md "$sync_guide"
+  git -c core.hooksPath=/dev/null commit -m "Record upstream sync $synced_tag at ${target_commit:0:9}"
+  printf 'Sync complete: main and liquid include %s; recorded %s.\n' "$target_commit" "$synced_tag"
 fi
-printf 'Apache check: liquid retains LICENSE%s after the rebase.\n' \
-  "$notice_suffix"
-
-update_last_synced_tag "$liquid_worktree/ORAMA-FORK.md" "$synced_tag"
-git -C "$liquid_worktree" add ORAMA-FORK.md
-git -C "$liquid_worktree" commit -m "Record upstream sync $synced_tag"
-
-if "$push"; then
-  printf 'Pushing main fast-forward only.\n'
-  git push origin refs/heads/main:refs/heads/main
-  printf 'Pushing liquid with --force-with-lease.\n'
-  git push --force-with-lease origin refs/heads/liquid:refs/heads/liquid
-fi
-
-if test -n "$temporary_liquid_worktree"; then
-  git worktree remove "$temporary_liquid_worktree"
-fi
-
-printf 'Sync complete: main is at %s and liquid is rebased; recorded %s.\n' \
-  "$(git rev-parse --short main)" "$synced_tag"
+printf 'Nothing was pushed. Review the local branch changes before publishing to origin.\n'

@@ -1,82 +1,162 @@
 <!--
 SPDX-FileCopyrightText: 2026 k0s authors
 SPDX-License-Identifier: CC-BY-SA-4.0
+Orama modification: sync integrity checks, baseline record, and verification.
 -->
 
 # Upstream sync
 
-`oramasearch/k0s` is a private copy of `k0sproject/k0s`. Its `main` branch is a
-pristine upstream mirror, while `liquid` contains the private-copy changes. The
-[`hack/sync-upstream.sh`](../../hack/sync-upstream.sh) script makes that relationship
-repeatable and records the most recently synchronized upstream release tag in
-[`ORAMA-FORK.md`](../../ORAMA-FORK.md).
+`oramasearch/k0s` is a private copy of `k0sproject/k0s`. `main` contains only
+upstream commits; `liquid` contains our changes rebased onto that mirror.
+[`sync.sh`](../../sync.sh) calls [`hack/sync-upstream.sh`](../../hack/sync-upstream.sh).
+Both entry points support the same options and never push.
 
-## Why
+## Recorded baseline
 
-Keeping `main` fast-forward-only means the difference from `main` to `liquid` remains
-the complete private-copy delta. Rebasing that delta after each upstream release keeps
-conflicts limited to the private changes and makes their review straightforward.
+**Last synced upstream tag:** `v1.37.0-alpha.1+k0s.0`
+
+**Last synced upstream commit:** `444794a05883e34dcf796f695ac4d00220556fa3`
+
+The script updates these two lines and the matching record in
+[`ORAMA-FORK.md`](../../ORAMA-FORK.md) in the same commit on `liquid`. It rejects
+placeholder tags, unknown upstream tags, and a recorded tag or commit that is
+not an ancestor of the already integrated upstream base. Tags come from a
+separate fetched upstream namespace, so a local release tag cannot impersonate
+an upstream tag. The reported tag is the highest version reachable from the
+selected upstream commit, including prereleases; it is not the newest tag on an
+unrelated maintenance branch.
+
+Verified on 2026-09-08: `origin/main` and `upstream/main` were both
+`377b3d4fc93c58e986438460288d8191f3bb09db`. The shared upstream base of `liquid`
+was the commit recorded above, 354 commits after the recorded tag. Upstream was
+47 commits ahead of that base, 401 commits after the same tag. `origin/liquid`
+at `847dcdeec` carried 18 private commits before this change. The baseline records
+existing ancestry; this change does not perform the 47-commit catch-up.
 
 ## Run and verify
 
-Run the script from any directory inside a clean checkout:
+Use a dedicated clone with local `main` tracking `origin/main` and local `liquid`
+checked out. The script will not move another worktree's checked-out `main`,
+switch your current branch, create worktrees, or repair a polluted local mirror.
+In a fresh clone of the copy whose default branch is `liquid`, prepare it with:
 
 ```sh
-hack/sync-upstream.sh --dry-run
+git branch --track main origin/main
+git remote add upstream https://github.com/k0sproject/k0s.git
+git remote set-url --push upstream DISABLED
+./sync.sh --dry-run
+./sync.sh
 ```
 
-The dry run queries the configured upstream without changing local branches or pushing.
-It prints the current upstream tag, the target commit, and the fast-forward and rebase
-that a real run would perform.
+Skip branch/remote creation commands when they already exist. Do not run a
+real sync in a shared development worktree. An actual run requires a clean
+`liquid` checkout with no unfinished Git operation. Git must support
+`git check-attr --source` for attribute inspection. The script rejects custom merge drivers and
+nonstandard merge attributes, including `merge=union`, in the candidate trees.
+Review attribute changes within the replayed history as well.
 
-For an actual synchronization, first run the dry run, then run:
+`--dry-run` fetches upstream main and tags and validates mirror ancestry, the
+recorded baseline, and current licence files. It changes fetched refs and
+Git objects, but no local branch, tracked file, commit, or remote branch. It
+reports missing upstream commits and lists the private commits to replay.
+It cannot establish whether the eventual rebase will conflict.
 
-```sh
-hack/sync-upstream.sh
-```
+An actual run fast-forwards `main` with a compare-and-swap ref update after
+checking ancestry. It rebases `liquid`, preserving private merge structure, onto
+the fetched commit. Rebase keeps the private delta visible for review; merging
+upstream into `liquid` would accumulate repeated merge history. Cached conflict
+resolutions (`rerere`), automatic stashing, hooks during rebase/record creation,
+and automatic updates to other branch refs are disabled. No conflict resolutions
+are supplied by the script.
 
-The script fetches upstream tags and branches, checks that `main` can fast-forward,
-rebases `liquid`, validates the Apache requirements, and commits the updated
-last-synced tag in `ORAMA-FORK.md`. It does not push by default. After review, push the
-result with:
+After a successful rebase, it verifies licence files against the new upstream
+tree, updates both sync records, and commits only changed records. A repeated
+run with no upstream or record change reports `Nothing to do` and creates no
+commit. It still fetches and repeats the integrity and licence checks.
 
-```sh
-hack/sync-upstream.sh --push
-```
+To select a specific fetched upstream release, use `--tag vX.Y.Z+k0s.N` with
+either mode. An older target that would rewind `main` is refused. The old
+`--push` option has been removed: publishing always follows human review of the
+local result, including private commits and any resolved conflicts. Only the
+owner performing that separate sync should publish `main` by a normal
+fast-forward push and `liquid` using an explicit expected-tip force-with-lease.
+Never push to `upstream`. This issue's delivery pushes only its feature branch.
 
-`--push` pushes `main` without force and pushes `liquid` with `--force-with-lease`.
+## Failure and recovery
 
-To mirror a particular upstream release instead of the current upstream `main`, use:
+If `main` cannot fast-forward, **someone has committed to the mirror**, likely by
+merging a Dependabot PR (or the requested target is older than `main`). The script
+prints commits outside the target's history and stops before moving any branch.
+Do not merge around the failure. Investigate the commits and obtain an owner
+repair decision, or use a fresh clone when only the local branch is stale after
+an already approved remote repair.
 
-```sh
-hack/sync-upstream.sh --tag vX.Y.Z+k0s.N
-```
+If the rebase conflicts, the script prints conflicting paths and leaves the
+rebase in place. `main` has already fast-forwarded, but no sync record has been
+committed and nothing has been pushed. Inspect `git status`, review each change,
+stage human resolutions, and run `git rebase --continue`, or use
+`git rebase --abort`. Disable rerere while continuing manually if it is enabled
+in your configuration. Run the script again after finishing or aborting.
+An aborted rebase does not rewind `main`; retrying from that state is supported.
 
-The same flag can be used with `--dry-run` and `--push`.
-
-If a rebase conflicts, the script leaves the `liquid` checkout in place and prints the
-exact `git status`, resolution, staging, rebase-continuation, and cleanup commands.
+A licence or record failure stops the run and names the failed check. After a
+post-rebase failure, review the local `liquid` result before fixing the problem
+and rerunning; do not publish it. No automatic rollback or history repair occurs.
 
 ## Licence checks
 
-Before changing `main`, the script verifies that `LICENSE` exists at the root of the
-selected upstream ref. After the rebase, it verifies that `liquid` retains `LICENSE`
-and verifies that `ORAMA-FORK.md` states that this private copy is modified, satisfying
-the Apache-2.0 modification-notice requirement.
+Preflight compares `liquid` to its shared upstream base. After rebase, the
+same checks compare it to the selected upstream target:
 
-Upstream currently provides no root `NOTICE`. When a selected upstream ref does include
-one, the script reports that fact and verifies that `liquid` retains it; otherwise it
-reports that no NOTICE check applies. No NOTICE is created by this repository.
+- `LICENSE` must exist and match the upstream Git blob byte-for-byte.
+- When upstream has a root `NOTICE`, its complete contents must survive unchanged.
+  When absent, the report explicitly says there is no upstream root NOTICE to
+  preserve. A newly introduced upstream NOTICE is checked after the rebase.
+- `docs/LICENSE`, when supplied upstream, must also match byte-for-byte.
+- `ORAMA-FORK.md` must declare that the copy is modified, and
+  `docs/liquid/README.md` must retain the durable liquid change index.
 
-## Change the procedure
+Checks print their reference commit and blob IDs. They establish repository
+file preservation and the presence of a modification declaration, not complete
+distribution compliance. Apache-2.0 section 4(b) also requires prominent notices
+in modified files; the index and Git history alone do not establish that. Review
+those notices and attributions carried in released binaries/documentation.
+Documentation changes retain CC-BY-SA-4.0. Upstream currently has no root NOTICE;
+third-party notices, including submodule notices, remain a packaging review duty.
 
-Keep the expected upstream fetch URL and disabled push URL in
-`hack/sync-upstream.sh` aligned with the repository remote configuration. Do not loosen
-the checks: the script must reject a missing remote, a different fetch URL, or a real
-upstream push URL. Any change to this procedure must update this guide and
-`ORAMA-FORK.md` in the same commit.
+## Actions, Dependabot, and cadence
 
-## Cadence
+Run a sync at every upstream k0s release and review a dry run weekly between
+releases. GitHub Actions stay disabled on the private copy. Dependabot version
+updates work independently of Actions and are disabled through repository
+settings, with no stable REST API. The owner disabled vulnerability alerts and
+automated security fixes; version-update disablement still needs verification.
 
-Run the synchronization at every upstream k0s release. Record the resulting release
-tag through the script so `ORAMA-FORK.md` remains the source of the last-sync status.
+**Never merge Dependabot PRs into `main`.** Upstream supplies
+`.github/dependabot.yml`; a pristine mirror retains it. Dependency changes enter
+`main` only by fast-forwarding upstream history. The owner's 2026-09-08 reset
+removed the 12 earlier Dependabot commits from `origin/main`. They were never
+ancestors of `liquid`. The script's ancestry gate detects recurrence without
+changing Actions or Dependabot settings.
+
+## Regression proof
+
+Run on macOS without containers, with at most six build jobs:
+
+```sh
+export GOMAXPROCS=6 GOFLAGS=-p=6
+go build ./... && go vet ./...
+shellcheck sync.sh hack/sync-upstream.sh
+python3 hack/test-sync-upstream.py
+```
+
+The regression suite creates and removes scratch repositories under this
+worktree. It exercises the real script against local upstream fixtures through
+Git URL rewriting; the configured upstream URL and disabled push URL remain
+subject to the production guards. Fixtures prove a clean dry run, a successful
+fast-forward/rebase, an unchanged second run, mirror divergence from a deliberate
+commit on `main`, explicit conflict paths (including with rerere enabled), and
+licence, inconsistent guide records, unsafe merge drivers, and baseline failures.
+No test pushes to any remote. The live upstream
+dry run uses a separate scratch clone of the current private refs; a real catch-up
+of the shared branches is intentionally deferred.
