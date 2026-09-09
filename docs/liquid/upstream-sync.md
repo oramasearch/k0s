@@ -138,3 +138,25 @@ automated security fixes; version-update disablement still needs verification.
 removed the 12 earlier Dependabot commits from `origin/main`. They were never
 ancestors of `liquid`. The script's ancestry gate detects recurrence without
 changing Actions or Dependabot settings.
+
+## Regression proof
+
+Run on macOS without containers, with at most six build jobs:
+
+```sh
+export GOMAXPROCS=6 GOFLAGS=-p=6
+go build ./... && go vet ./...
+shellcheck sync.sh hack/sync-upstream.sh
+python3 hack/test-sync-upstream.py
+```
+
+The regression suite creates and removes scratch repositories under this
+worktree. It exercises the real script against local upstream fixtures through
+Git URL rewriting; the configured upstream URL and disabled push URL remain
+subject to the production guards. Fixtures prove a clean dry run, a successful
+fast-forward/rebase, an unchanged second run, mirror divergence from a deliberate
+commit on `main`, explicit conflict paths (including with rerere enabled), and
+licence, inconsistent guide records, unsafe merge drivers, and baseline failures.
+No test pushes to any remote. The live upstream
+dry run uses a separate scratch clone of the current private refs; a real catch-up
+of the shared branches is intentionally deferred.
