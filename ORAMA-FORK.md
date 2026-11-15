@@ -53,8 +53,9 @@ k0s is **Apache License 2.0** for code, with `docs/` under **CC-BY-SA-4.0**. Git
 reports the licence as "Other" because of that dual arrangement; the code licence is
 unambiguous.
 
-Orama's changes are Copyright (c) 2026 Orama Search Inc. and are licensed like upstream:
-Apache License 2.0 for code and CC-BY-SA-4.0 for `docs/`. Distributing modified binaries carries
+The changes in this fork are contributed under upstream's terms, as any k0s contribution is:
+Apache License 2.0 for code and CC-BY-SA-4.0 for `docs/`, with upstream's header convention
+("SPDX-FileCopyrightText: k0s authors"). They are written to be offered upstream. Distributing modified binaries carries
 three obligations:
 
 1. Include the `LICENSE`.
