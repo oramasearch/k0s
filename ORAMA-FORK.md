@@ -71,8 +71,9 @@ modified binaries**, three obligations attach:
 1. Include the `LICENSE`.
 2. Retain the `NOTICE` file and its attributions when the selected upstream ref includes one.
 3. **State that we changed the files** — §4(b) requires prominent notices of modification.
-   [`docs/liquid/README.md`](docs/liquid/README.md) is the durable index of our
-   modifications. The branch difference helps review them, but neither a branch
+   [`NOTICE`](NOTICE) states that Orama Search Inc. modified k0s and lists every upstream file
+   it changed (regenerate the list after each sync). [`docs/liquid/README.md`](docs/liquid/README.md)
+   is the durable index of our modifications. The branch difference helps review them, but neither a branch
    split nor an index proves that every changed file carries the required notice.
 
 The current upstream tree has no root `NOTICE`. The sync script reports that
