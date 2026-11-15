@@ -1,4 +1,0 @@
-# What stays out of the public export of this fork (gitignore syntax). Nothing is excluded today.
-# The agent files (CLAUDE.md, AGENTS.md, .claude/, .codex/, .cursor/) are never listed here: they
-# ship, and are written to be public. Upstream's LICENSE, docs/LICENSE and any NOTICE are kept
-# unchanged.
