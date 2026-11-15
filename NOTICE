@@ -1,16 +1,15 @@
-k0s, as modified by OramaSearch, Inc.
+k0s, with modifications
 
 This is a modified version of k0s (https://github.com/k0sproject/k0s), Copyright the k0s authors,
-licensed under the Apache License, Version 2.0 (see LICENSE). OramaSearch, Inc. changed the files
-listed below and added others, to support liquid (https://github.com/oramasearch/liquid). Orama's
-changes and additions are licensed under the Apache License, Version 2.0, like the rest of k0s.
-Files added on this branch follow upstream's header convention ("SPDX-FileCopyrightText: k0s
-authors"); their changes are nonetheless contributed by OramaSearch, Inc.
+licensed under the Apache License, Version 2.0 (see LICENSE). The files listed below were changed,
+and others added, to support liquid (https://github.com/oramasearch/liquid). The changes and additions
+are contributed under the Apache License, Version 2.0, like the rest of k0s, and follow upstream's
+header convention ("SPDX-FileCopyrightText: k0s authors").
 
 Upstream k0s has no NOTICE file of its own; this file only records the modifications, as section
 4(b) of the Apache License requires.
 
-Files from upstream k0s that OramaSearch, Inc. modified, relative to the upstream commit this
+Files from upstream k0s that were modified, relative to the upstream commit this
 branch is based on (regenerate with: git diff --name-only --diff-filter=M \
 $(git merge-base liquid upstream/main) liquid):
 
