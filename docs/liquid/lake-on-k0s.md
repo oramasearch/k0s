@@ -10,8 +10,7 @@ controller-worker. The installer builds k0s from the current checkout unless a l
 provided, waits for the declared liquid components, installs CloudNativePG and orama-operator, applies
 the single-node Lake sample, and proves HTTP access through a Cilium Gateway API `NodePort`.
 
-The live cluster run remains deferred to a Linux host. k0s cannot run on the macOS development host,
-and this project does not use Docker or a VM there (decision 33).
+The live cluster run needs a Linux host: k0s does not run on macOS.
 
 ## Requirements
 
@@ -24,15 +23,14 @@ Set these variables before invoking the installer:
 
 ```sh
 export OPERATOR_CHART=/absolute/path/to/orama-operator/chart
-export ORAMA_DOCKERHUB_USERNAME=orama-reader
-export ORAMA_DOCKERHUB_TOKEN='read-only-token'
+# only when the images need credentials:
+export ORAMA_DOCKERHUB_USERNAME=<docker-hub-user>
+export ORAMA_DOCKERHUB_TOKEN='<read-only-token>'
 ```
 
-The token needs pull-only access to `oramasearch/orama-operator:v1-sandbox` and
-`oramasearch/lake:v1-sandbox`. The installer tests both manifests anonymously first. If both images
-are public, it ignores the two credential variables and creates no pull Secret. The anonymous
-manifest checks returned HTTP 401 for both images on 2026-09-06, so credentials are currently
-required.
+The installer tests both image manifests (`oramasearch/orama-operator` and `oramasearch/lake`)
+anonymously first. If both images are public, it ignores the two credential variables and creates no
+pull Secret. Otherwise the token needs pull-only access to both.
 
 `K0S_BINARY=/absolute/path/to/k0s` selects a published liquid artifact instead of building. Without
 it, the installer runs:
@@ -127,7 +125,7 @@ helm template orama-operator /path/to/orama-operator/chart \
 
 ## Run record
 
-Single-node run deferred to a Linux host (no Docker or VM on this machine; decision 33).
+Single-node run on a Linux host: not recorded yet.
 
 - Host and kernel:
 - k0s commit or artifact digest:

@@ -81,7 +81,7 @@ check_registry_access() {
     return
   fi
 
-  [ -n "${ORAMA_DOCKERHUB_USERNAME:-}" ] || fail "set ORAMA_DOCKERHUB_USERNAME for the private images"
+  [ -n "${ORAMA_DOCKERHUB_USERNAME:-}" ] || fail "the images need credentials: set ORAMA_DOCKERHUB_USERNAME"
   [ -n "${ORAMA_DOCKERHUB_TOKEN:-}" ] || fail "set ORAMA_DOCKERHUB_TOKEN to a read-only Docker Hub token"
   use_pull_secret=true
 }

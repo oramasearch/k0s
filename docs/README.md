@@ -26,14 +26,14 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 ### Liquid distribution
 
-This private copy distributes liquid k0s. Start with these resources when you
+This fork distributes liquid k0s. Start with these resources when you
 need the liquid components and Lake installation path:
 
 - [Liquid distribution guide](liquid/README.md) - Identify the `liquid`
   branch, its `k0s` artifact, and the Linux runtime requirement.
 - [Lake on one k0s node](liquid/lake-on-k0s.md) - Install Lake on a connected
   Linux host. The runbook's host validation remains deferred.
-- [Air-gapped Lake installation (orama-operator repository)](https://github.com/oramasearch/orama-operator/blob/main/docs/install/k0s.md) - Transfer and install Lake in an air-gapped environment. The runbook's Linux-host validation remains deferred.
+- [Air-gapped Lake installation (in the Orama operator)](https://github.com/oramasearch/orama-operator/blob/main/docs/install/k0s.md) - Transfer and install Lake in an air-gapped environment. The runbook's Linux-host validation remains deferred.
 
 ### Upstream k0s
 

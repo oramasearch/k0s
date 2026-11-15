@@ -12,8 +12,7 @@ environments that belong to the same trusting customer?
 
 ## Decision
 
-**Decided by Steve on 2026-09-05, liquid-bridge decision 31: customer workloads
-use microVMs from the start.** On shared worker nodes every customer workload pod
+**Customer workloads use microVMs from the start.** On shared worker nodes every customer workload pod
 sets `runtimeClassName: untrusted`, backed by Kata Containers or a Firecracker
 configuration. No VM boundary contains workloads from more than one customer.
 
@@ -104,11 +103,11 @@ Decision 28 places `liquid serve admission` before pod creation. It verifies the
 attestation for every referenced image before Kubernetes may schedule the pod;
 the microVM then limits what an admitted workload can do at runtime. Attestation
 verification and VM isolation address different threats, so neither replaces the
-other. The operator emits `runtimeClassName: untrusted`; the admission wiring in
-k0s #15 and the platform resources in k0s #17 must reject customer workloads that
+other. The operator emits `runtimeClassName: untrusted`; the admission wiring
+([admission](admission.md)) and the platform resources ([platform surface](platform-surface.md)) must reject customer workloads that
 try to bypass that assignment.
 
-Decision 23 keeps `liquid node-store` on the worker host. The node store fetches
+`liquid node-store` stays on the worker host. The node store fetches
 and verifies the chunks needed for the image tree, and its snapshotter or VFS
 contract presents that root filesystem to the Kata runtime. The guest receives
 only its image filesystem; it does not receive the host store, credentials, cache,
@@ -117,13 +116,13 @@ boundary.
 
 ## Consequences
 
-- orama-operator #124 creates one profiled namespace per change, adds only the
+- The Orama operator creates one profiled namespace per change, adds only the
   required network-policy exceptions, applies customer quotas, and assigns the
   `untrusted` runtime to every preview workload. Preview namespaces from one
   customer may trust each other only where explicit policy permits it.
-- k0s #17 exposes the same rules through the deployment surface. It must preserve
+- The [platform surface](platform-surface.md) exposes the same rules through the deployment surface. It must preserve
   the runtime assignment across deploys and refuse manifests that remove it.
-- k0s #20 owns lifecycle for separate customer clusters and for the Kata runtime,
+- The [lifecycle runbooks](lifecycle/README.md) own lifecycle for separate customer clusters and for the Kata runtime,
   guest kernel, VM image, hardware checks, capacity, upgrades, backup, and node
   replacement.
 - vcluster is not installed. Kata or Firecracker installation, the preview

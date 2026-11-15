@@ -1,0 +1,4 @@
+# What stays out of the public export of this fork (gitignore syntax). The export tool also always
+# leaves out CLAUDE.md, AGENTS.md, .claude/, .codex/, .cursor/ and this file. Upstream's LICENSE,
+# docs/LICENSE and any NOTICE are kept unchanged.
+/AGENTS.md
