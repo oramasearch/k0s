@@ -43,8 +43,8 @@ liquid node-store serve \
   --control-listen 127.0.0.1:8082
 ```
 
-The embedded liquid source is pinned to commit
-`ef2389cc3393e9ba28a43e68a2eb8cfdfb5a5809`, which includes admission transparency-log
+The embedded liquid source is pinned to release `v0.3.0`, commit
+`66b5bb992cda27b1c4865aebbf414202189a7136`, which includes admission transparency-log
 verification. The node-store runtime was added by commit
 `ba12a564c997208da5ace034b4d905e416525a42`.
 The source is a submodule under `embedded-bins/liquid/src`, and the resulting Linux executable is
