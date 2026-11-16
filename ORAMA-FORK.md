@@ -3,24 +3,16 @@ SPDX-FileCopyrightText: 2026 k0s authors
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-# Orama private copy of k0s
+# Orama's fork of k0s
 
-This is a **private copy** of [`k0sproject/k0s`](https://github.com/k0sproject/k0s),
+This is Orama's fork of [`k0sproject/k0s`](https://github.com/k0sproject/k0s),
 kept in sync with upstream and modified to support **liquid drips**
-(see [`oramasearch/liquid`](https://github.com/oramasearch/liquid)).
+(see [liquid](https://github.com/oramasearch/liquid)): the k0s distribution that Orama Lake
+installs on. [`docs/liquid/README.md`](docs/liquid/README.md) indexes what is changed.
 
-This file records the private-copy policy. [`sync.sh`](sync.sh) is the root entry
-point for maintaining the branch relationship below.
-
-## Why a copy and not a fork
-
-`gh repo fork` of a public upstream creates a **public** repository that **cannot be
-flipped to private**, which would publish org and product context. Org policy forbids it.
-This repository was created with `gh repo create oramasearch/k0s --private` and the
-upstream history pushed into it.
-
-**Never push this repository's branches to `upstream`.** The `upstream` push URL is
-deliberately set to an invalid value as a guard.
+[`sync.sh`](sync.sh) is the root entry point for maintaining the branch relationship below.
+Our branches are never pushed to `upstream`: the `upstream` push URL is deliberately set to an
+invalid value as a guard. Fixes that belong upstream are offered there as separate pull requests.
 
 ## Branch model
 
@@ -37,11 +29,7 @@ which is what makes upstream syncs reviewable rather than archaeological.
 **Last synced upstream commit:** `444794a05883e34dcf796f695ac4d00220556fa3`
 
 This is the verified upstream base already included in `liquid`, not a claim that
-the current upstream tip has been integrated. On 2026-09-08, `origin/main` and
-`upstream/main` both pointed to `377b3d4fc93c58e986438460288d8191f3bb09db`;
-`liquid` was missing 47 upstream commits. The tag above is an ancestor of the
-recorded base (354 commits after that tag). The current upstream tip is 401 commits
-after the same tag. The catch-up rebase remains a separate operation.
+the current upstream tip has been integrated; catching up is a separate rebase.
 
 ## Syncing with upstream
 
@@ -65,8 +53,10 @@ k0s is **Apache License 2.0** for code, with `docs/` under **CC-BY-SA-4.0**. Git
 reports the licence as "Other" because of that dual arrangement; the code licence is
 unambiguous.
 
-Apache 2.0 permits private modification with no obligation to publish. **If we distribute
-modified binaries**, three obligations attach:
+The changes in this fork are contributed under upstream's terms, as any k0s contribution is:
+Apache License 2.0 for code and CC-BY-SA-4.0 for `docs/`, with upstream's header convention
+("SPDX-FileCopyrightText: k0s authors"). They are written to be offered upstream. Distributing modified binaries carries
+three obligations:
 
 1. Include the `LICENSE`.
 2. Retain the `NOTICE` file and its attributions when the selected upstream ref includes one.
@@ -89,7 +79,7 @@ the liquid repository rather than editing `docs/` here.
 
 ## What "support drips" means
 
-Design lives in `oramasearch/liquid`, not here. The integration points are the deployment
+The design lives in [liquid](https://github.com/oramasearch/liquid), not here. The integration points are the deployment
 runtime and the chunk store:
 
 - the node fetching image content as **chunks** it does not already have, across images
@@ -116,22 +106,8 @@ liquid verifier; its policy and operations are documented in `docs/liquid/admiss
 See `docs/features/13-deployment-runtime.md` and `docs/features/22-change-capture.md` in
 the liquid repository.
 
-## Actions and Dependabot
+## Dependabot and the mirror
 
-GitHub Actions remain disabled (`enabled: false`, checked 2026-09-08).
-Vulnerability alerts and automated security fixes were disabled by the owner.
-Dependabot version updates are separate: they do not require Actions, and disabling
-them is a repository setting with no stable REST API. Treat that setting as pending
-until the owner verifies it. Deleting `.github/dependabot.yml` on `liquid` does not
-protect the pristine mirror, which retains upstream's copy of that file.
-
-**Dependabot PRs are never merged into `main`.** The mirror takes commits from
-upstream only. Earlier merged Dependabot PRs introduced 12 commits into `main`;
-the owner reset `origin/main` from `37294bdde` to `377b3d4fc` on 2026-09-08.
-None of those commits was an ancestor of `liquid`. Older local clones may still
-have the polluted `main`; do not reset a shared checkout through the sync script.
-Use a fresh dedicated clone or obtain an explicit owner repair decision.
-
-If `main` cannot fast-forward, the script stops and names a merged Dependabot PR
-as the likely cause. It never merges around mirror drift, resets `main`, enables
-Actions, or changes repository settings.
+The `main` mirror takes commits from upstream only, so no automated pull request is merged into
+it. If `main` cannot fast-forward, the sync script stops and names the likely cause. It never
+merges around mirror drift, resets `main`, or changes repository settings.

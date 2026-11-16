@@ -22,10 +22,10 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 ## This fork
 
-`oramasearch/k0s` is a private copy of `k0sproject/k0s`. The `main` branch is a
+`oramasearch/k0s` is Orama's fork of `k0sproject/k0s`. The `main` branch is a
 pristine upstream mirror; the `liquid` branch carries Orama's distribution work for
 liquid. Everything below this section is the upstream README, unchanged. What is
-specific to this copy lives in two places:
+specific to this fork lives in two places:
 
 - [`docs/liquid/README.md`](docs/liquid/README.md) indexes the liquid-specific
   changes: immutable bootc nodes, chunk-aware workload images, image admission, declared components,
@@ -69,14 +69,14 @@ k0s is distributed as a single binary with zero host OS dependencies besides the
 
 ### Liquid distribution
 
-This private copy distributes liquid k0s. Start with these resources when you
+This fork distributes liquid k0s. Start with these resources when you
 need the liquid components and Lake installation path:
 
 - [Liquid distribution guide](docs/liquid/README.md) - Identify the `liquid`
   branch, its `k0s` artifact, and the Linux runtime requirement.
 - [Lake on one k0s node](docs/liquid/lake-on-k0s.md) - Install Lake on a
   connected Linux host. The runbook's host validation remains deferred.
-- [Air-gapped Lake installation (orama-operator repository)](https://github.com/oramasearch/orama-operator/blob/main/docs/install/k0s.md) - Transfer and install Lake in an air-gapped environment. The runbook's Linux-host validation remains deferred.
+- [Air-gapped Lake installation (in the Orama operator)](https://github.com/oramasearch/orama-operator/blob/main/docs/install/k0s.md) - Transfer and install Lake in an air-gapped environment. The runbook's Linux-host validation remains deferred.
 
 ### Upstream k0s
 

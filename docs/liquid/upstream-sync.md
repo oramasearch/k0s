@@ -6,7 +6,7 @@ Orama modification: sync integrity checks, baseline record, and verification.
 
 # Upstream sync
 
-`oramasearch/k0s` is a private copy of `k0sproject/k0s`. `main` contains only
+`oramasearch/k0s` is Orama's fork of `k0sproject/k0s`. `main` contains only
 upstream commits; `liquid` contains our changes rebased onto that mirror.
 [`sync.sh`](../../sync.sh) calls [`hack/sync-upstream.sh`](../../hack/sync-upstream.sh).
 Both entry points support the same options and never push.
@@ -30,7 +30,7 @@ Verified on 2026-09-08: `origin/main` and `upstream/main` were both
 `377b3d4fc93c58e986438460288d8191f3bb09db`. The shared upstream base of `liquid`
 was the commit recorded above, 354 commits after the recorded tag. Upstream was
 47 commits ahead of that base, 401 commits after the same tag. `origin/liquid`
-at `847dcdeec` carried 18 private commits before this change. The baseline records
+at `847dcdeec` carried 18 of our commits before this change. The baseline records
 existing ancestry; this change does not perform the 47-commit catch-up.
 
 ## Run and verify
@@ -58,12 +58,12 @@ Review attribute changes within the replayed history as well.
 `--dry-run` fetches upstream main and tags and validates mirror ancestry, the
 recorded baseline, and current licence files. It changes fetched refs and
 Git objects, but no local branch, tracked file, commit, or remote branch. It
-reports missing upstream commits and lists the private commits to replay.
+reports missing upstream commits and lists our commits to replay.
 It cannot establish whether the eventual rebase will conflict.
 
 An actual run fast-forwards `main` with a compare-and-swap ref update after
-checking ancestry. It rebases `liquid`, preserving private merge structure, onto
-the fetched commit. Rebase keeps the private delta visible for review; merging
+checking ancestry. It rebases `liquid`, preserving our merge structure, onto
+the fetched commit. Rebase keeps our delta visible for review; merging
 upstream into `liquid` would accumulate repeated merge history. Cached conflict
 resolutions (`rerere`), automatic stashing, hooks during rebase/record creation,
 and automatic updates to other branch refs are disabled. No conflict resolutions
@@ -77,7 +77,7 @@ commit. It still fetches and repeats the integrity and licence checks.
 To select a specific fetched upstream release, use `--tag vX.Y.Z+k0s.N` with
 either mode. An older target that would rewind `main` is refused. The old
 `--push` option has been removed: publishing always follows human review of the
-local result, including private commits and any resolved conflicts. Only the
+local result, including our commits and any resolved conflicts. Only the
 owner performing that separate sync should publish `main` by a normal
 fast-forward push and `liquid` using an explicit expected-tip force-with-lease.
 Never push to `upstream`. This issue's delivery pushes only its feature branch.
@@ -127,7 +127,7 @@ third-party notices, including submodule notices, remain a packaging review duty
 ## Actions, Dependabot, and cadence
 
 Run a sync at every upstream k0s release and review a dry run weekly between
-releases. GitHub Actions stay disabled on the private copy. Dependabot version
+releases. Dependabot version
 updates work independently of Actions and are disabled through repository
 settings, with no stable REST API. The owner disabled vulnerability alerts and
 automated security fixes; version-update disablement still needs verification.
@@ -158,5 +158,5 @@ fast-forward/rebase, an unchanged second run, mirror divergence from a deliberat
 commit on `main`, explicit conflict paths (including with rerere enabled), and
 licence, inconsistent guide records, unsafe merge drivers, and baseline failures.
 No test pushes to any remote. The live upstream
-dry run uses a separate scratch clone of the current private refs; a real catch-up
+dry run uses a separate scratch clone of the current refs; a real catch-up
 of the shared branches is intentionally deferred.

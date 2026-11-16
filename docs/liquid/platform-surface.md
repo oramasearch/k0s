@@ -121,7 +121,7 @@ routes, certificates, and custom-resource writes are also omitted. The operator 
 network, quota, credential, and environment reconciliation. Add a permission only when a concrete
 tenant workflow requires it; the initial grant deliberately favors the smaller set.
 
-**RBAC is the authoritative control for tenant Secret access** (liquid-bridge decision 38).
+**RBAC is the authoritative control for tenant Secret access.**
 The profile's binding must be the only grant tenant identities receive in an environment namespace.
 Kubernetes RBAC is additive: an extra RoleBinding or ClusterRoleBinding, including an `edit` or
 `admin` grant, can invalidate this boundary. RBAC cannot select namespaces by label; the namespaced
