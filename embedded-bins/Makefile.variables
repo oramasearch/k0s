@@ -30,9 +30,8 @@ containerd_build_shim_go_cgo_enabled = 0
 containerd_build_go_ldflags = -w -s
 containerd_build_go_ldflags_extra = -extldflags=-static
 
-# liquid has no release tags yet. Pin the admission log-verification merge commit.
-liquid_version = 0.0.1
-liquid_revision = ef2389cc3393e9ba28a43e68a2eb8cfdfb5a5809
+liquid_version = 0.3.0
+liquid_revision = 66b5bb992cda27b1c4865aebbf414202189a7136
 
 # renovate: datasource=github-releases depName=kubernetes/kubernetes
 kubernetes_version = 1.37.0-alpha.3
