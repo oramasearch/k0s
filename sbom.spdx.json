@@ -2,17 +2,17 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "k0s-f15da246b66f",
-  "documentNamespace": "https://github.com/oramasearch/k0s/sbom/f15da246b66fff10bdfc01de81f657d4bf2c63e9",
+  "name": "k0s-dc1f3084e3b4",
+  "documentNamespace": "https://github.com/oramasearch/k0s/sbom/dc1f3084e3b4016674078d4a55ea874f745af81d",
   "creationInfo": {
-    "created": "2026-11-15T20:48:19Z",
+    "created": "2026-11-16T06:30:41Z",
     "creators": [
       "Organization: OramaSearch, Inc.",
       "Tool: tools/sbom.py",
       "Tool: syft"
     ],
     "licenseListVersion": "3.29",
-    "comment": "Made from source commit f15da246b66fff10bdfc01de81f657d4bf2c63e9 by tools/sbom.py."
+    "comment": "Made from source commit dc1f3084e3b4016674078d4a55ea874f745af81d by tools/sbom.py."
   },
   "documentDescribes": [
     "SPDXRef-DocumentRoot"
@@ -7475,7 +7475,7 @@
     {
       "name": "k0s",
       "SPDXID": "SPDXRef-DocumentRoot",
-      "versionInfo": "f15da246b66f",
+      "versionInfo": "dc1f3084e3b4",
       "downloadLocation": "git+https://github.com/oramasearch/k0s.git",
       "homepage": "https://github.com/oramasearch/k0s",
       "filesAnalyzed": false,
