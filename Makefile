@@ -67,6 +67,8 @@ endif
 # EMBEDDED_BINS_BUILDMODE can be either:
 #   docker	builds the binaries in docker
 #   none	does not embed any binaries
+# Individual binaries can be left out with EMBEDDED_BINS_EXCLUDE, see
+# embedded-bins/Makefile.variables.
 EMBEDDED_BINS_BUILDMODE ?= docker
 
 # k0s runs on linux even if it's built on mac or windows
@@ -118,6 +120,9 @@ space := $(nullstring) # space now holds a single space
 comma := ,
 
 .DELETE_ON_ERROR:
+
+.PHONY: FORCE
+FORCE:
 
 .PHONY: build
 ifeq ($(TARGET_OS),windows)
@@ -195,10 +200,17 @@ pkg/client/clientset/.client-gen.stamp: $(GO_ENV_REQUISITES) hack/tools/boilerpl
 	  && mv -f -- "$$gendir/out/clientset" pkg/client/.
 	touch -- '$@'
 
-embedded-binaries-linux.zip: .bins.linux.stamp
-embedded-binaries-windows.zip: .bins.windows.stamp
+# Records the names of the embedded executables, and is only touched when they
+# change, e.g. when EMBEDDED_BINS_EXCLUDE is set differently than before.
+.embedded-bins.%.stamp: FORCE
+	@printf '%s\n' $(embedded_bins_$*) | cmp -s -- - '$@' 2>/dev/null \
+	  || printf '%s\n' $(embedded_bins_$*) >'$@'
+
+embedded-binaries-linux.zip: .bins.linux.stamp .embedded-bins.linux.stamp
+embedded-binaries-windows.zip: .bins.windows.stamp .embedded-bins.windows.stamp
 embedded-binaries-linux.zip embedded-binaries-windows.zip: $(GO_ENV_REQUISITES) go.sum hack/zip-files/* embedded-bins/Makefile.variables
-	CGO_ENABLED=0 $(GO) run -tags=hack hack/zip-files/main.go embedded-bins/staging/$(@:embedded-binaries-%.zip=%)/bin/* >$@
+	CGO_ENABLED=0 $(GO) run -tags=hack hack/zip-files/main.go \
+	  $(addprefix embedded-bins/staging/$(@:embedded-binaries-%.zip=%)/bin/,$(embedded_bins_$(@:embedded-binaries-%.zip=%))) >$@
 
 ifneq ($(EMBEDDED_BINS_BUILDMODE),none)
 k0s: embedded-binaries-linux.zip
@@ -222,6 +234,8 @@ ifneq ($(EMBEDDED_BINS_BUILDMODE),none)
 endif
 	@printf '\n%s size: %s\n\n' '$@' "$$(du -sh -- $@ | cut -f1)"
 
+.bins.linux.stamp: .embedded-bins.linux.stamp
+.bins.windows.stamp: .embedded-bins.windows.stamp
 .bins.windows.stamp .bins.linux.stamp: embedded-bins/Makefile.variables
 	$(MAKE) -C embedded-bins \
 	  TARGET_OS=$(patsubst .bins.%.stamp,%,$@) \
@@ -423,7 +437,7 @@ clean-image-bundles:
 
 .PHONY: clean
 clean: clean-gocache clean-docker-image clean-image-bundles
-	-rm -f k0s k0s.exe k0s.bare k0s.bare.exe .bins.*stamp
+	-rm -f k0s k0s.exe k0s.bare k0s.bare.exe .bins.*stamp .embedded-bins.*.stamp
 	-rm -f embedded-binaries-linux.zip embedded-binaries-windows.zip
 	-rm -rf $(K0S_GO_BUILD_CACHE)
 	-find pkg/apis -type f -name .controller-gen.stamp -delete
