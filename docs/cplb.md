@@ -20,6 +20,13 @@ CPLB relies on [keepalived](https://www.keepalived.org) for highly available VIP
 reverse proxy implemented in k0s (recommended for simplicity), or it can use Keepalived's virtual servers feature,
 which ultimately relies on IPVS.
 
+k0s embeds keepalived by default. If k0s has been built without it (see
+[builds without some embedded
+binaries](external-runtime-deps.md#builds-without-some-embedded-binaries)),
+keepalived must be installed on every controller node. Otherwise, controllers
+with CPLB enabled fail to start with an error saying that keepalived is neither
+embedded nor installed.
+
 ## Compatibility
 
 CPLB depends on multiple technologies to work together as a whole, making it difficult to work on every single scenario.

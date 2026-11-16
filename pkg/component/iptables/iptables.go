@@ -38,7 +38,9 @@ func (c *Component) Init(_ context.Context) error {
 	}
 
 	c.IPTablesMode = iptablesMode
-	log.Infof("iptables mode: %s", c.IPTablesMode)
+	if iptablesMode != "" {
+		log.Infof("iptables mode: %s", c.IPTablesMode)
+	}
 	return nil
 }
 
@@ -50,17 +52,54 @@ func (c *Component) Stop() error {
 	return nil
 }
 
-// extractIPTablesBinaries extracts the iptables binaries from the k0s binary and makes the symlinks
+// The commands that k0s links to the selected xtables multi-call executable.
+var xtablesCommands = []string{"iptables", "iptables-save", "iptables-restore", "ip6tables", "ip6tables-save", "ip6tables-restore"}
+
+func xtablesExecutable(mode string) string {
+	return fmt.Sprintf("xtables-%s-multi", mode)
+}
+
+// extractIPTablesBinaries stages the xtables executables and makes the symlinks
 // to the backend detected by DetectHostIPTablesMode.
+//
+// The xtables executables are taken from the k0s executable, if embedded.
+// Otherwise, they are looked up in k0sBinDir and in the PATH, so that k0s builds
+// that don't embed them use the host's iptables. If no xtables executable can be
+// found at all, no symlinks are made and the host's iptables, if any, is used
+// as is. In that case, the returned mode is empty.
+//
 // extractIPTablesBinaries only works on linux, if called in another OS it will return an error.
 func extractIPTablesBinaries(k0sBinDir string, iptablesMode string) (string, error) {
-	cmds := []string{"xtables-legacy-multi", "xtables-nft-multi"}
-	for _, cmd := range cmds {
-		if _, err := assets.StageExecutable(k0sBinDir, cmd); err != nil {
-			return "", err
+	xtables := make(map[string]string, 2)
+	for _, mode := range []string{ModeLegacy, ModeNFT} {
+		path, err := assets.StageExecutable(k0sBinDir, xtablesExecutable(mode))
+		if err != nil {
+			if !errors.Is(err, exec.ErrNotFound) {
+				return "", err
+			}
+			logrus.WithError(err).Debugf("iptables-%s is not available", mode)
+			continue
 		}
+		xtables[mode] = path
 	}
-	if iptablesMode == "" || iptablesMode == "auto" {
+
+	switch {
+	case iptablesMode != "" && iptablesMode != "auto":
+		if _, ok := xtables[iptablesMode]; !ok {
+			return "", fmt.Errorf("iptables mode %q requested, but %s is neither embedded in k0s nor found in %s or in the PATH", iptablesMode, xtablesExecutable(iptablesMode), k0sBinDir)
+		}
+
+	case len(xtables) == 0:
+		logrus.Warn("No xtables executable is embedded in k0s or installed on the host, using the host's iptables from the PATH, if any")
+		return "", removeXtablesSymlinks(k0sBinDir)
+
+	case len(xtables) == 1:
+		for mode := range xtables {
+			iptablesMode = mode
+		}
+		logrus.Infof("Only iptables-%s is available", iptablesMode)
+
+	default:
 		var err error
 		iptablesMode, err = DetectHostIPTablesMode(k0sBinDir)
 		if err != nil {
@@ -72,9 +111,16 @@ func extractIPTablesBinaries(k0sBinDir string, iptablesMode string) (string, err
 			logrus.WithError(err).Infof("Failed to detect iptables mode, using iptables-%s by default", iptablesMode)
 		}
 	}
+
 	logrus.Infof("using iptables-%s", iptablesMode)
-	oldpath := fmt.Sprintf("xtables-%s-multi", iptablesMode)
-	for _, symlink := range []string{"iptables", "iptables-save", "iptables-restore", "ip6tables", "ip6tables-save", "ip6tables-restore"} {
+
+	// Link relative to the bin directory if the executable has been staged
+	// there, otherwise use the absolute path of the host's executable.
+	oldpath := xtables[iptablesMode]
+	if filepath.Dir(oldpath) == filepath.Clean(k0sBinDir) {
+		oldpath = filepath.Base(oldpath)
+	}
+	for _, symlink := range xtablesCommands {
 		symlinkPath := filepath.Join(k0sBinDir, symlink)
 
 		// remove if it exist and ignore error if it doesn't
@@ -88,6 +134,39 @@ func extractIPTablesBinaries(k0sBinDir string, iptablesMode string) (string, err
 
 	return iptablesMode, nil
 }
+
+// removeXtablesSymlinks removes the symlinks to an xtables executable that a
+// previous run made in k0sBinDir, so that they don't shadow the host's iptables.
+// Anything that's not such a symlink is left untouched.
+func removeXtablesSymlinks(k0sBinDir string) error {
+	var errs []error
+	for _, symlink := range xtablesCommands {
+		symlinkPath := filepath.Join(k0sBinDir, symlink)
+		target, err := os.Readlink(symlinkPath)
+		if err != nil {
+			continue // not a symlink, or doesn't exist
+		}
+		switch filepath.Base(target) {
+		case xtablesExecutable(ModeLegacy), xtablesExecutable(ModeNFT):
+			if err := os.Remove(symlinkPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// LookPath returns the path of the named iptables executable. It prefers the
+// one in k0sBinDir, which is where k0s stages its own, and falls back to a PATH
+// lookup for builds of k0s that don't embed iptables.
+func LookPath(k0sBinDir, name string) (string, error) {
+	path := filepath.Join(k0sBinDir, name+constant.ExecutableSuffix)
+	if stat, err := os.Stat(path); err == nil && !stat.IsDir() {
+		return path, nil
+	}
+	return exec.LookPath(name)
+}
+
 func kernelMajorVersion() byte {
 	if runtime.GOOS != "linux" {
 		return 0
@@ -155,7 +234,10 @@ func DetectHostIPTablesMode(k0sBinPath string) (string, error) {
 }
 
 func findMatchingEntries(k0sBinPath, mode string, entries ...string) (entriesFound bool, total uint, _ error) {
-	binaryPath := filepath.Join(k0sBinPath, fmt.Sprintf("xtables-%s-multi", mode))
+	binaryPath, err := LookPath(k0sBinPath, xtablesExecutable(mode))
+	if err != nil {
+		return false, 0, err
+	}
 
 	findMatches := func(subcommand string) error {
 		cmd := exec.Command(binaryPath, subcommand)
