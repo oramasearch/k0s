@@ -262,6 +262,28 @@ are not detected.
 External `id` will be executed as a fallback if local user lookup fails, in case
 NSS is used.
 
+### Builds without some embedded binaries
+
+k0s can be built with some of its embedded binaries left out, using the
+`EMBEDDED_BINS_EXCLUDE` build variable, e.g.:
+
+```shell
+make EMBEDDED_BINS_EXCLUDE='keepalived xtables-legacy-multi xtables-nft-multi'
+```
+
+k0s then looks for each executable that is not embedded in its bin directory
+(`/var/lib/k0s/bin` by default) and in the `PATH`. The executables that can be
+provided by the host this way, and what happens if they are missing:
+
+| Executable | Used for | If missing |
+|------------|----------|------------|
+| `keepalived` | [Control plane load balancing](cplb.md) on controllers | Controllers with `spec.network.controlPlaneLoadBalancing` enabled fail to start with an error saying that keepalived is neither embedded nor installed. Install keepalived on every controller, or use an [external load balancer](high-availability.md#load-balancer). |
+| `xtables-legacy-multi`, `xtables-nft-multi` | The `iptables`, `ip6tables` and their `-save` and `-restore` commands that k0s links into its bin directory for the kubelet and for control plane load balancing | If only one of them is available, k0s uses that mode. If neither is available, k0s does not link any iptables commands and the host's `iptables` from the `PATH`, if any, is used. Setting `--iptables-mode` to a mode whose executable is missing is an error. |
+
+kube-proxy and kube-router run as Pods and bring their own iptables in their
+images, so they don't use the host's executables. kube-proxy's `nftables` mode
+needs no iptables at all.
+
 ## Windows specific
 
 <!--

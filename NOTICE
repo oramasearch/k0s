@@ -25,6 +25,8 @@ $(git merge-base liquid upstream/main) liquid):
   cmd/root_test.go
   cmd/worker/worker.go
   docs/README.md
+  docs/cplb.md
+  docs/external-runtime-deps.md
   embedded-bins/Makefile
   embedded-bins/Makefile.variables
   hack/list-images/main.go
@@ -42,11 +44,15 @@ $(git merge-base liquid upstream/main) liquid):
   pkg/client/clientset/fake/register.go
   pkg/client/clientset/scheme/register.go
   pkg/component/controller/clusterconfig.go
+  pkg/component/controller/cplb/cplb_linux.go
+  pkg/component/controller/cplb/cplb_linux_test.go
   pkg/component/controller/extensions_controller.go
   pkg/component/controller/extensions_controller_test.go
   pkg/component/controller/workerconfig/reconciler.go
   pkg/component/controller/workerconfig/reconciler_test.go
   pkg/component/controller/workerconfig/snapshot.go
+  pkg/component/iptables/iptables.go
+  pkg/component/iptables/iptables_test.go
   pkg/component/worker/config/config.go
   pkg/component/worker/config/config_test.go
   pkg/component/worker/containerd/component.go

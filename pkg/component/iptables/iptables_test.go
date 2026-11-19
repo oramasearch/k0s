@@ -200,6 +200,145 @@ func TestDetectHostIPTablesMode(t *testing.T) {
 	})
 }
 
+func TestComponent_HostProvidedXtables(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("iptables binaries are only staged on Linux")
+	}
+
+	sh, err := exec.LookPath("sh")
+	require.NoError(t, err)
+
+	// The test executable has no embedded binaries, just like a k0s build
+	// without embedded xtables executables.
+	writeXtables := func(t *testing.T, dir, mode string) string {
+		path := filepath.Join(dir, "xtables-"+mode+"-multi")
+		require.NoError(t, file.WriteContentAtomically(path, []byte("#!"+sh+" -eu\n"), 0755))
+		return path
+	}
+
+	assertSymlinks := func(t *testing.T, binDir, target string) {
+		for _, name := range []string{"iptables", "iptables-save", "iptables-restore", "ip6tables", "ip6tables-save", "ip6tables-restore"} {
+			link, err := os.Readlink(filepath.Join(binDir, name))
+			if assert.NoError(t, err, name) {
+				assert.Equal(t, target, link, name)
+			}
+		}
+	}
+
+	t.Run("host_nft_and_legacy_explicit_mode", func(t *testing.T) {
+		pathDir, binDir := t.TempDir(), t.TempDir()
+		t.Setenv("PATH", pathDir)
+		writeXtables(t, pathDir, "legacy")
+		nft := writeXtables(t, pathDir, "nft")
+
+		underTest := iptables.Component{IPTablesMode: iptables.ModeNFT, BinDir: binDir}
+		require.NoError(t, underTest.Init(t.Context()))
+		assert.Equal(t, iptables.ModeNFT, underTest.IPTablesMode)
+		assertSymlinks(t, binDir, nft)
+	})
+
+	t.Run("host_legacy_only", func(t *testing.T) {
+		pathDir, binDir := t.TempDir(), t.TempDir()
+		t.Setenv("PATH", pathDir)
+		legacy := writeXtables(t, pathDir, "legacy")
+
+		underTest := iptables.Component{BinDir: binDir}
+		require.NoError(t, underTest.Init(t.Context()))
+		assert.Equal(t, iptables.ModeLegacy, underTest.IPTablesMode)
+		assertSymlinks(t, binDir, legacy)
+	})
+
+	t.Run("staged_in_bin_dir", func(t *testing.T) {
+		binDir := t.TempDir()
+		t.Setenv("PATH", t.TempDir())
+		writeXtables(t, binDir, "nft")
+
+		underTest := iptables.Component{IPTablesMode: "auto", BinDir: binDir}
+		require.NoError(t, underTest.Init(t.Context()))
+		assert.Equal(t, iptables.ModeNFT, underTest.IPTablesMode)
+		assertSymlinks(t, binDir, "xtables-nft-multi")
+	})
+
+	t.Run("requested_mode_unavailable", func(t *testing.T) {
+		pathDir, binDir := t.TempDir(), t.TempDir()
+		t.Setenv("PATH", pathDir)
+		writeXtables(t, pathDir, "nft")
+
+		underTest := iptables.Component{IPTablesMode: iptables.ModeLegacy, BinDir: binDir}
+		err := underTest.Init(t.Context())
+		assert.ErrorContains(t, err, `iptables mode "legacy" requested, but xtables-legacy-multi is neither embedded in k0s nor found in`)
+	})
+
+	t.Run("no_xtables_at_all", func(t *testing.T) {
+		binDir := t.TempDir()
+		t.Setenv("PATH", t.TempDir())
+
+		// Symlinks left behind by a previous run are removed, so that they
+		// don't shadow the host's iptables. Anything else is left alone.
+		require.NoError(t, os.Symlink("xtables-nft-multi", filepath.Join(binDir, "iptables")))
+		require.NoError(t, os.Symlink("/usr/sbin/xtables-legacy-multi", filepath.Join(binDir, "ip6tables")))
+		require.NoError(t, file.WriteContentAtomically(filepath.Join(binDir, "iptables-save"), nil, 0755))
+		require.NoError(t, os.Symlink("some-other-tool", filepath.Join(binDir, "iptables-restore")))
+
+		underTest := iptables.Component{BinDir: binDir}
+		require.NoError(t, underTest.Init(t.Context()))
+		assert.Empty(t, underTest.IPTablesMode)
+
+		assert.NoFileExists(t, filepath.Join(binDir, "iptables"))
+		assert.NoFileExists(t, filepath.Join(binDir, "ip6tables"))
+		assert.FileExists(t, filepath.Join(binDir, "iptables-save"))
+		link, err := os.Readlink(filepath.Join(binDir, "iptables-restore"))
+		require.NoError(t, err)
+		assert.Equal(t, "some-other-tool", link)
+	})
+
+	t.Run("no_xtables_explicit_mode", func(t *testing.T) {
+		binDir := t.TempDir()
+		t.Setenv("PATH", t.TempDir())
+
+		underTest := iptables.Component{IPTablesMode: iptables.ModeNFT, BinDir: binDir}
+		assert.ErrorContains(t, underTest.Init(t.Context()), "xtables-nft-multi is neither embedded in k0s nor found in")
+	})
+}
+
+func TestLookPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("iptables is not available on Windows")
+	}
+
+	sh, err := exec.LookPath("sh")
+	require.NoError(t, err)
+
+	pathDir, binDir := t.TempDir(), t.TempDir()
+	t.Setenv("PATH", pathDir)
+
+	write := func(t *testing.T, dir, name string) string {
+		path := filepath.Join(dir, name)
+		require.NoError(t, file.WriteContentAtomically(path, []byte("#!"+sh+" -eu\n"), 0755))
+		return path
+	}
+
+	t.Run("not_found", func(t *testing.T) {
+		_, err := iptables.LookPath(binDir, "iptables")
+		assert.ErrorIs(t, err, exec.ErrNotFound)
+	})
+
+	hostPath := write(t, pathDir, "iptables")
+
+	t.Run("falls_back_to_path", func(t *testing.T) {
+		path, err := iptables.LookPath(binDir, "iptables")
+		require.NoError(t, err)
+		assert.Equal(t, hostPath, path)
+	})
+
+	t.Run("prefers_bin_dir", func(t *testing.T) {
+		binPath := write(t, binDir, "iptables")
+		path, err := iptables.LookPath(binDir, "iptables")
+		require.NoError(t, err)
+		assert.Equal(t, binPath, path)
+	})
+}
+
 func TestMain(m *testing.M) {
 	logrus.SetLevel(logrus.DebugLevel)
 	os.Exit(m.Run())

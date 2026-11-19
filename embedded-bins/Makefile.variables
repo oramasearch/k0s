@@ -1,3 +1,18 @@
+# The executables that are embedded into the k0s executable, per target OS.
+#
+# EMBEDDED_BINS_EXCLUDE is a space-separated list of executables to leave out
+# of the embedded binaries, given by name and without the ".exe" suffix, e.g.
+# "keepalived xtables-legacy-multi xtables-nft-multi". k0s looks for an
+# executable that is not embedded in its bin directory and in the PATH at runtime.
+EMBEDDED_BINS_EXCLUDE ?=
+embedded_bins_linux = $(filter-out $(EMBEDDED_BINS_EXCLUDE), \
+  runc kubelet containerd containerd-shim-runc-v2 \
+  kube-apiserver kube-scheduler kube-controller-manager \
+  etcd kine konnectivity-server liquid \
+  xtables-legacy-multi xtables-nft-multi keepalived)
+embedded_bins_windows = $(filter-out $(EMBEDDED_BINS_EXCLUDE:%=%.exe), \
+  kubelet.exe containerd.exe containerd-shim-runhcs-v1.exe)
+
 # renovate: datasource=docker depName=docker.io/library/alpine versioning=docker
 alpine_patch_version = 3.24.1
 alpine_version = $(word 1,$(subst ., ,$(alpine_patch_version))).$(word 2,$(subst ., ,$(alpine_patch_version)))

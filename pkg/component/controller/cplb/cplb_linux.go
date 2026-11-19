@@ -24,6 +24,7 @@ import (
 	k0sAPI "github.com/k0sproject/k0s/pkg/apis/k0s/v1beta1"
 	"github.com/k0sproject/k0s/pkg/assets"
 	"github.com/k0sproject/k0s/pkg/component/controller/cplb/tcpproxy"
+	"github.com/k0sproject/k0s/pkg/component/iptables"
 	"github.com/k0sproject/k0s/pkg/config"
 	"github.com/k0sproject/k0s/pkg/constant"
 	"github.com/k0sproject/k0s/pkg/supervisor"
@@ -76,7 +77,13 @@ func (k *Keepalived) Init(_ context.Context) error {
 	k.configFilePath = filepath.Join(k.K0sVars.RunDir, "keepalived.conf")
 	k.virtualServersFilePath = filepath.Join(k.K0sVars.RunDir, "keepalived-virtualservers-generated.conf")
 	k.executablePath, err = assets.StageExecutable(k.K0sVars.BinDir, "keepalived")
-	return err
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return fmt.Errorf("control plane load balancing requires keepalived, which is neither embedded in k0s nor installed on this host: %w", err)
+		}
+		return fmt.Errorf("failed to stage keepalived: %w", err)
+	}
+	return nil
 }
 
 // Start generates the keepalived configuration and starts the keepalived process
@@ -457,7 +464,11 @@ func (k *Keepalived) redirectToProxyIPTables(op string) error {
 			if ip := net.ParseIP(vip); ip != nil && ip.To4() == nil {
 				iptablesBin = "ip6tables"
 			}
-			cmd := exec.Command(filepath.Join(k.K0sVars.BinDir, iptablesBin), cmdArgs...)
+			iptablesPath, err := iptables.LookPath(k.K0sVars.BinDir, iptablesBin)
+			if err != nil {
+				return fmt.Errorf("failed to find %s: %w", iptablesBin, err)
+			}
+			cmd := exec.Command(iptablesPath, cmdArgs...)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("failed to execute iptables command: %w, output: %s", err, output)

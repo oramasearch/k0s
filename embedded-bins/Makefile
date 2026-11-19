@@ -13,18 +13,16 @@ DOCKER ?= docker
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --pretty=%ct || date -u +%s)
 
 bindir = staging/${TARGET_OS}/bin
-posix_bins = runc kubelet containerd containerd-shim-runc-v2 kube-apiserver kube-scheduler kube-controller-manager etcd kine konnectivity-server liquid xtables-legacy-multi xtables-nft-multi keepalived
-windows_bins = kubelet.exe containerd.exe containerd-shim-runhcs-v1.exe
 
 ifeq ($(TARGET_OS),windows)
-bins = ${windows_bins}
+bins = $(embedded_bins_windows)
 # suffix .exe is added to the binaries in the original build pipelines
 containerd_bins = containerd containerd-shim-runhcs-v1
 kubernetes_bins = kubelet kube-proxy
 else
 containerd_bins = containerd containerd-shim-runc-v2
 kubernetes_bins = kubelet kube-apiserver kube-scheduler kube-controller-manager
-bins = ${posix_bins}
+bins = $(embedded_bins_linux)
 endif
 
 .DELETE_ON_ERROR:

@@ -52,4 +52,7 @@ connected runbook retains its explicit Linux-host validation deferral.
   storage and external routing to the declared on-premises components, and records the Linux run.
 - [Lifecycle runbooks](lifecycle/README.md) cover upgrades, backup and restore, node
   replacement, certificate rotation, and observability for those defaults.
+- [Building without the GPL embedded binaries](embedded-binaries.md) covers the
+  `EMBEDDED_BINS_EXCLUDE` build variable and how CPLB and iptables behave without keepalived
+  and iptables embedded.
 - [Upstream sync](upstream-sync.md) covers keeping the fork in sync with upstream.
